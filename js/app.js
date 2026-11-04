@@ -92,6 +92,159 @@ function redefinirSenhaTutor() {
   showToast('Senha Atualizada!', `Nova senha cadastrada com sucesso para [${email}]. Pode entrar agora!`, 'fa-circle-check', 'success');
 }
 
+// ============================================================================
+// GERENCIADOR DE TOKENS OTP E AUTORIZAÇÃO CLÍNICA (REGRAS ESTRITAS DE SEGURANÇA)
+// ============================================================================
+const DEFAULT_OTPS = {
+  'PST-9921': { otp: '849201', nome: 'Thor' },
+  '981098108429182': { otp: '849201', nome: 'Thor' },
+  'PST-1428': { otp: '849201', nome: 'Bolinha' },
+  'PST-4022': { otp: '123456', nome: 'Luna' }
+};
+
+function salvarOtpAtivo(tag, codigoOtp, nomePet) {
+  try {
+    const otps = JSON.parse(localStorage.getItem('petstory_active_otps') || '{}');
+    const cleanTag = (tag || '').trim().toUpperCase();
+    const cleanOtp = (codigoOtp || '').toString().trim().replace(/\s+/g, '');
+    otps[cleanTag] = {
+      otp: cleanOtp,
+      nome: nomePet || 'Paciente',
+      expiraEm: Date.now() + (2 * 60 * 60 * 1000), // 2 horas de validade (conforme PetStoryService.java)
+      criadoEm: Date.now()
+    };
+    localStorage.setItem('petstory_active_otps', JSON.stringify(otps));
+  } catch (e) {
+    console.warn('Erro ao salvar OTP ativo:', e);
+  }
+}
+
+function obterOtpEsperadoParaTag(tag) {
+  const cleanTag = (tag || '').trim().toUpperCase();
+  if (!cleanTag) return null;
+
+  try {
+    const otps = JSON.parse(localStorage.getItem('petstory_active_otps') || '{}');
+    if (otps[cleanTag]) {
+      const reg = otps[cleanTag];
+      if (!reg.expiraEm || Date.now() < reg.expiraEm) {
+        return reg.otp;
+      }
+    }
+  } catch (e) {
+    console.warn('Erro ao ler OTP ativo:', e);
+  }
+
+  if (DEFAULT_OTPS[cleanTag]) {
+    return DEFAULT_OTPS[cleanTag].otp;
+  }
+
+  const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
+  if (session && session.pet && session.pet.tag && session.pet.tag.toUpperCase() === cleanTag) {
+    return '849201';
+  }
+
+  return null;
+}
+
+function obterNomePacientePorTag(tag) {
+  const cleanTag = (tag || '').trim().toUpperCase();
+  if (DEFAULT_OTPS[cleanTag]) return DEFAULT_OTPS[cleanTag].nome;
+  
+  const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
+  if (session && session.pet && session.pet.tag && session.pet.tag.toUpperCase() === cleanTag) {
+    return session.pet.nome || 'Paciente';
+  }
+  
+  try {
+    const otps = JSON.parse(localStorage.getItem('petstory_active_otps') || '{}');
+    if (otps[cleanTag] && otps[cleanTag].nome) return otps[cleanTag].nome;
+  } catch (e) {}
+  
+  if (cleanTag === 'PST-1428') return 'Bolinha';
+  if (cleanTag === 'PST-9921' || cleanTag === '981098108429182') return 'Thor';
+  if (cleanTag === 'PST-4022') return 'Luna';
+  return 'Paciente';
+}
+
+function validarTagCadastrada(tag) {
+  const cleanTag = (tag || '').trim().toUpperCase();
+  if (!cleanTag) return false;
+  if (cleanTag === 'PST-9921' || cleanTag === '981098108429182') return true;
+  if (cleanTag === 'PST-1428' || cleanTag === 'PST-4022') return true;
+  
+  const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
+  if (session && session.pet && session.pet.tag && session.pet.tag.toUpperCase() === cleanTag) {
+    return true;
+  }
+
+  try {
+    const otps = JSON.parse(localStorage.getItem('petstory_active_otps') || '{}');
+    if (otps[cleanTag]) return true;
+  } catch (e) {}
+
+  return false;
+}
+
+function validarAcessoClinicoVeterinario(tagDigitada, otpDigitado) {
+  const tag = (tagDigitada || '').trim().toUpperCase();
+  const otp = (otpDigitado || '').trim().replace(/\s+/g, '');
+
+  if (!tag) {
+    return {
+      valido: false,
+      campo: 'tag',
+      titulo: 'Código da Tag Obrigatório',
+      mensagem: 'Por favor, informe a Tag PST (ex: PST-9921 ou PST-1428) ou número do Microchip.'
+    };
+  }
+
+  if (!validarTagCadastrada(tag)) {
+    return {
+      valido: false,
+      campo: 'tag',
+      titulo: 'Tag Não Encontrada',
+      mensagem: `A medalha [${tag}] não foi localizada no cadastro. Verifique o código alfanumérico.`
+    };
+  }
+
+  if (!otp) {
+    return {
+      valido: false,
+      campo: 'otp',
+      titulo: 'Código OTP Obrigatório',
+      mensagem: 'Digite o código de autorização de 6 dígitos gerado pelo tutor no aplicativo PetStory.'
+    };
+  }
+
+  if (otp.length < 6 || !/^\d{6}$/.test(otp)) {
+    return {
+      valido: false,
+      campo: 'otp',
+      titulo: 'Formato OTP Inválido',
+      mensagem: 'O token de autorização clínica deve conter exatamente 6 dígitos numéricos.'
+    };
+  }
+
+  const otpEsperado = obterOtpEsperadoParaTag(tag);
+  const nomePet = obterNomePacientePorTag(tag);
+
+  if (!otpEsperado || otp !== otpEsperado) {
+    return {
+      valido: false,
+      campo: 'otp',
+      titulo: 'Código OTP Incorreto',
+      mensagem: `Código OTP [${otp}] incorreto! Não coincide com a autorização gerada pelo tutor de ${nomePet}. Acesso ao prontuário negado.`
+    };
+  }
+
+  return {
+    valido: true,
+    tag: tag,
+    nome: nomePet
+  };
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
 });
@@ -139,6 +292,9 @@ function initApp() {
   window.imprimirReceitaOficial = imprimirReceitaOficial;
   window.encerrarSessaoTutor = encerrarSessaoTutor;
   window.redefinirSenhaTutor = redefinirSenhaTutor;
+  window.salvarOtpAtivo = salvarOtpAtivo;
+  window.obterOtpEsperadoParaTag = obterOtpEsperadoParaTag;
+  window.validarAcessoClinicoVeterinario = validarAcessoClinicoVeterinario;
 
   // Preenche datas padrão nos formulários (hoje e +1 ano)
   inicializarDatasFormularios();
@@ -190,8 +346,8 @@ function switchScreen(screenKey) {
   
   let targetScreen = document.getElementById(targetId);
   if (!targetScreen) {
-    targetScreen = document.getElementById('screen-vet-scan');
-    screenKey = 'vet-scan';
+    targetScreen = document.getElementById('screen-login');
+    screenKey = 'login';
   }
 
   allScreens.forEach(screen => {
@@ -235,7 +391,7 @@ function handleInitialRoute() {
   if (hash && SCREENS[hash]) {
     switchScreen(hash);
   } else {
-    switchScreen('vet-scan');
+    switchScreen('login');
   }
 }
 
@@ -257,7 +413,7 @@ function updateHeaderContext(screenKey) {
     }
   }
 
-  // No portal do tutor, atualiza o crachá do usuário no cabeçalho
+  // No portal do tutor ou telas públicas, atualiza o crachá do usuário no cabeçalho
   if (userPill) {
     if (screenKey === 'tutor') {
       const local = obterSessaoSalva();
@@ -267,6 +423,12 @@ function updateHeaderContext(screenKey) {
         <span>${nomeTutor}</span>
       `;
       userPill.title = "Tutor Conectado";
+    } else if (screenKey === 'login' || screenKey === 'cadastro') {
+      userPill.innerHTML = `
+        <i class="fa-solid fa-lock" style="color: var(--teal-primary); margin-right: 6px;"></i>
+        <span>Acesso Seguro</span>
+      `;
+      userPill.title = "Acesso Seguro PetStory";
     } else {
       userPill.innerHTML = `
         <img src="https://images.unsplash.com/photo-1628009368231-7bb7cfcb0def?auto=format&fit=crop&w=120&q=80" 
@@ -572,6 +734,7 @@ async function finalizarCadastroPet() {
   };
 
   salvarSessao(tutorData, petData, tagCode);
+  salvarOtpAtivo(tagCode, '849201', petNome);
   renderTutorPortal(tutorData, petData, tagCode, false);
 
   // Renderiza QR Code localmente (offline e sem bloqueadores)
@@ -1045,25 +1208,26 @@ function initScannerSimulations() {
       const code = tagInput ? tagInput.value.trim().toUpperCase() : '';
       const otp = otpInput ? otpInput.value.trim() : '';
 
-      if (!code) {
-        showToast('Atenção', 'Informe o código da tag.', 'fa-triangle-exclamation', 'warning');
-        tagInput?.focus();
-        return;
+      const resultado = validarAcessoClinicoVeterinario(code, otp);
+
+      if (!resultado.valido) {
+        showToast(resultado.titulo, resultado.mensagem, 'fa-shield-halved', 'danger');
+        if (resultado.campo === 'tag') {
+          tagInput?.focus();
+        } else {
+          otpInput?.focus();
+          otpInput?.select();
+        }
+        return; // BLOQUEIA ACESSO E PERMANECE NA TELA DE VALIDAÇÃO
       }
 
-      if (!otp || otp.length < 6) {
-        showToast('Código de Autorização Obrigatório', 'Digite o código de 6 dígitos gerado pelo tutor.', 'fa-key', 'warning');
-        otpInput?.focus();
-        return;
-      }
-
-      showToast('Validando Acesso...', `Autenticando Tag ${code}...`, 'fa-circle-notch fa-spin');
+      showToast('Validando Acesso...', `Autenticando Tag ${resultado.tag} com OTP de ${resultado.nome}...`, 'fa-circle-notch fa-spin');
       
       setTimeout(() => {
-        carregarProntuarioPaciente(code);
+        carregarProntuarioPaciente(resultado.tag);
         switchScreen('prontuario');
-        showToast('Acesso Autorizado', `Prontuário completo aberto com sucesso por 2 horas.`, 'fa-shield-dog', 'success');
-      }, 700);
+        showToast('Acesso Autorizado', `Prontuário completo de ${resultado.nome} aberto com sucesso por 2 horas.`, 'fa-shield-dog', 'success');
+      }, 600);
     });
   }
 
@@ -1080,7 +1244,8 @@ function initScannerSimulations() {
 function startScanningSimulation(methodName) {
   const session = obterSessaoSalva();
   const codigoParaEscanear = session?.pet?.tag || 'PST-9921';
-  const nomeParaEscanear = session?.pet?.nome || 'Thor';
+  const nomeParaEscanear = obterNomePacientePorTag(codigoParaEscanear);
+  const otpValido = obterOtpEsperadoParaTag(codigoParaEscanear) || '849201';
 
   showToast('Leitura em andamento', `Lendo ${methodName}...`, 'fa-radar fa-spin');
 
@@ -1088,7 +1253,7 @@ function startScanningSimulation(methodName) {
     const tagInput = document.getElementById('input-tag-code');
     const otpInput = document.getElementById('input-vet-otp');
     if (tagInput) tagInput.value = codigoParaEscanear;
-    if (otpInput) otpInput.value = '849201';
+    if (otpInput) otpInput.value = otpValido;
 
     carregarProntuarioPaciente(codigoParaEscanear);
     showToast('Identificado!', `Paciente: ${nomeParaEscanear} • Tag: ${codigoParaEscanear}`, 'fa-circle-check', 'success');
@@ -2505,15 +2670,22 @@ function openOtpModal() {
   const modal = document.getElementById('modal-otp-backdrop');
   const codeElem = document.getElementById('otp-code-value');
   const secondsElem = document.getElementById('otp-seconds-left');
+  const petNameElem = document.getElementById('otp-modal-pet-name');
   
   if (!modal) return;
+
+  const session = obterSessaoSalva();
+  const petNome = session?.pet?.nome || 'Thor';
+  const petTag = session?.pet?.tag || 'PST-9921';
+
+  if (petNameElem) petNameElem.textContent = petNome;
 
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const formattedCode = `${code.slice(0, 3)} ${code.slice(3)}`;
   if (codeElem) codeElem.textContent = formattedCode;
 
-  const vetOtpInput = document.getElementById('input-vet-otp');
-  if (vetOtpInput) vetOtpInput.value = code;
+  // Salva no registro de OTPs ativos para a tag do animal em atendimento!
+  salvarOtpAtivo(petTag, code, petNome);
 
   modal.classList.add('open');
 

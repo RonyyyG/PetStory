@@ -23,7 +23,7 @@
   <!-- Header -->
   <header class="site-header">
     <div class="container header-inner">
-      <div class="brand-wrapper" onclick="switchScreen('vet-scan')">
+      <div class="brand-wrapper" onclick="switchScreen('login')">
         <div class="brand-logo-icon">
           <i class="fa-solid fa-shield-dog"></i>
         </div>
@@ -34,17 +34,14 @@
       </div>
 
       <div class="header-status-badge" id="header-role-badge">
-        <span class="status-dot"></span>
-        <span>Modo Clínico (CRMV Ativo)</span>
+        <span class="status-dot" style="background:#64748b; box-shadow:none;"></span>
+        <span>Portal de Acesso</span>
       </div>
 
       <div class="header-actions">
-        <div class="user-pill" title="Profissional Autenticado">
-          <img src="https://images.unsplash.com/photo-1628009368231-7bb7cfcb0def?auto=format&fit=crop&w=120&q=80" 
-               alt="Dr. Ricardo" 
-               class="user-avatar-mini"
-               onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%2300d2ad%22/><text x=%2250%22 y=%2260%22 font-size=%2240%22 text-anchor=%22middle%22 fill=%22%23000%22>👨‍⚕️</text></svg>'">
-          <span>Dr. Ricardo (CRMV-SP)</span>
+        <div class="user-pill" title="Acesso Seguro PetStory" onclick="switchScreen('login')">
+          <i class="fa-solid fa-lock" style="color: var(--teal-primary); margin-right: 6px;"></i>
+          <span>Acesso Seguro</span>
         </div>
       </div>
     </div>
@@ -55,7 +52,7 @@
     <!-- ====================================================================
          NOVA TELA: LOGIN UNIFICADO (TUTOR OU MÉDICO-VETERINÁRIO)
          ==================================================================== -->
-    <section id="screen-login" class="screen-view">
+    <section id="screen-login" class="screen-view active">
       <div class="auth-container">
         <div class="section-header-block" style="text-align: center;">
           <span class="level-badge level-clinic">
@@ -358,7 +355,7 @@
     <!-- ====================================================================
          TELA 3: PORTAL CLÍNICO DO VETERINÁRIO (LEITOR QR / CÓDIGO DA TAG + OTP)
          ==================================================================== -->
-    <section id="screen-vet-scan" class="screen-view active">
+    <section id="screen-vet-scan" class="screen-view">
       <div class="section-header-block">
         <span class="level-badge level-clinic">
           <i class="fa-solid fa-user-doctor"></i> Nível 2: Acesso Clínico Autorizado
@@ -443,6 +440,9 @@
             <div class="quick-chips-wrapper">
               <button type="button" class="chip-btn" data-code="PST-9921" data-otp="849201">
                 <i class="fa-solid fa-dog"></i> Thor • PST-9921 (OTP: 849201)
+              </button>
+              <button type="button" class="chip-btn" data-code="PST-1428" data-otp="849201">
+                <i class="fa-solid fa-shield-dog"></i> Bolinha • PST-1428 (OTP: 849201)
               </button>
               <button type="button" class="chip-btn" data-code="PST-4022" data-otp="123456">
                 <i class="fa-solid fa-cat"></i> Luna • PST-4022 (OTP: 123456)
@@ -1523,7 +1523,7 @@
         </div>
         <h3 style="font-size: 1.35rem; margin-bottom: 0.4rem;">Código de Autorização Clínica</h3>
         <p style="font-size: 0.85rem; color: var(--text-secondary);">
-          Informe este código temporário ao Dr. Veterinário para autorizar o acesso ao prontuário do Thor.
+          Informe este código temporário ao Dr. Veterinário para autorizar o acesso ao prontuário de <strong id="otp-modal-pet-name" style="color: var(--teal-primary);">Thor</strong>.
         </p>
 
         <!-- Live OTP Digits -->
@@ -1889,6 +1889,7 @@
         <span><strong>PetStory</strong> • Prontuário Unificado & Identificação Inteligente</span>
       </div>
       <div class="footer-links">
+        <a href="#login" onclick="switchScreen('login'); return false;">Portal de Login</a>
         <a href="#vet-scan" onclick="switchScreen('vet-scan'); return false;">Acesso Clínico</a>
         <a href="#tutor" onclick="switchScreen('tutor'); return false;">Área do Tutor</a>
         <a href="#public-tag" onclick="switchScreen('public-tag'); return false;">Tag Pública</a>

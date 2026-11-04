@@ -1,0 +1,18 @@
+# Maven Build
+target/
+*.class
+
+# IDEs e Editores
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# Arquivos de Sistema e Lixo Temporário
+%SystemDrive%/
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.log

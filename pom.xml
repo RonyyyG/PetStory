@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- ====================================================================== -->
+    <!-- Identificação do Projeto Acadêmico A3                                  -->
+    <!-- ====================================================================== -->
+    <groupId>br.com.petstory</groupId>
+    <artifactId>petstory-backend</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>PetStory - Backend Java Puro com Maven</name>
+    <description>
+        Sistema de Prontuário Veterinário Unificado e Identificação Inteligente.
+        Projeto desenvolvido em Java 21 Puro (sem Spring Boot) para manter o código
+        simples, direto, didático e testável via JUnit 5.
+    </description>
+
+    <properties>
+        <!-- Configuração para Java 21 LTS e UTF-8 para evitar problemas de acentuação -->
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        
+        <!-- Versões das bibliotecas utilizadas -->
+        <junit.jupiter.version>5.10.2</junit.jupiter.version>
+        <gson.version>2.10.1</gson.version>
+        <postgresql.version>42.7.3</postgresql.version>
+    </properties>
+
+    <dependencies>
+        <!-- ================================================================== -->
+        <!-- JUnit 5: Framework padrão para testes unitários automatizados      -->
+        <!-- (Exatamente o que o professor avalia nas aulas: assert, testes)    -->
+        <!-- ================================================================== -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- ================================================================== -->
+        <!-- Gson: Para serialização/desserialização JSON simples em Java puro  -->
+        <!-- ================================================================== -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>${gson.version}</version>
+        </dependency>
+
+        <!-- ================================================================== -->
+        <!-- PostgreSQL JDBC Driver: Para comunicação direta com o banco        -->
+        <!-- relacional do Supabase (PostgreSQL) caso queira conexão direta     -->
+        <!-- ================================================================== -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>${postgresql.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Plugin para compilação do código em Java 21 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                    <encoding>UTF-8</encoding>
+                </configuration>
+            </plugin>
+
+            <!-- Plugin Surefire para executar os testes automatizados JUnit 5 no 'mvn test' -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -63,7 +63,7 @@ function initKeyboardShortcuts() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (typeof closeOtpModal === 'function') closeOtpModal();
-      if (typeof fecharModalVitais === 'function') fecharModalVitais();
+      if (typeof fecharModalNovoVermifugo === 'function') fecharModalNovoVermifugo();
       if (typeof fecharModalNovaVacina === 'function') fecharModalNovaVacina();
       if (typeof fecharModalNovaPrescricao === 'function') fecharModalNovaPrescricao();
       if (typeof fecharModalNovaCirurgia === 'function') fecharModalNovaCirurgia();

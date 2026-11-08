@@ -709,27 +709,36 @@ async function carregarExamesProntuario(petId) {
     if (resp.ok) {
       const exames = await resp.json();
       if (exames && exames.length > 0) {
-        grid.innerHTML = exames.map(ex => `
-          <div class="exam-card" style="background: #f0fdf9; border: 1px solid #a7f3d0;">
-            <div>
-              <div class="exam-card-top">
-                <div class="exam-icon" style="background: rgba(0, 168, 135, 0.12); color: #00735c;">
-                  <i class="fa-solid fa-file-pdf"></i>
+        grid.innerHTML = exames.map(ex => {
+          const dataFmt = formatarDataBr(ex.data_realizacao) || ex.data_realizacao || 'Data recente';
+          const tituloEnc = encodeURIComponent(ex.titulo || 'Laudo Diagnóstico');
+          const fileUrlEnc = encodeURIComponent(ex.arquivo_url || '');
+          const laudoTextoEnc = encodeURIComponent(ex.laudo_texto || 'Parâmetros dentro da normalidade.');
+          const dataFmtEnc = encodeURIComponent(dataFmt);
+          const labEnc = encodeURIComponent(ex.laboratorio || 'LabVet');
+
+          return `
+            <div class="exam-card" style="background: #f0fdf9; border: 1px solid #a7f3d0;">
+              <div>
+                <div class="exam-card-top">
+                  <div class="exam-icon" style="background: rgba(0, 168, 135, 0.12); color: #00735c;">
+                    <i class="fa-solid fa-file-pdf"></i>
+                  </div>
+                  <div class="exam-info">
+                    <h4>${ex.titulo}</h4>
+                    <span>Data: ${dataFmt} • ${ex.laboratorio || 'LabVet'}</span>
+                  </div>
                 </div>
-                <div class="exam-info">
-                  <h4>${ex.titulo}</h4>
-                  <span>Data: ${formatarDataBr(ex.data_realizacao) || ex.data_realizacao} • ${ex.laboratorio || 'LabVet'}</span>
-                </div>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                  ${ex.laudo_texto || 'Parâmetros dentro da normalidade.'}
+                </p>
               </div>
-              <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
-                ${ex.laudo_texto || 'Parâmetros dentro da normalidade.'}
-              </p>
+              <button type="button" class="btn-secondary" style="width: 100%;" onclick="visualizarExameSimulado('${tituloEnc}', '${fileUrlEnc}', '${laudoTextoEnc}', '${dataFmtEnc}', '${labEnc}', true)">
+                <i class="fa-solid fa-file-pdf" style="color: #f43f5e;"></i> Visualizar Laudo Assinado (PDF)
+              </button>
             </div>
-            <button type="button" class="btn-secondary" style="width: 100%;" onclick="visualizarExameSimulado('${ex.titulo}', '${ex.arquivo_url || ''}')">
-              <i class="fa-solid fa-file-pdf" style="color: #f43f5e;"></i> Visualizar Laudo Assinado (PDF)
-            </button>
-          </div>
-        `).join('');
+          `;
+        }).join('');
         return;
       }
     }
@@ -1330,7 +1339,13 @@ async function salvarModalExame(event) {
   const fileInput = document.getElementById('input-exame-file');
   let fileUrl = '';
   if (fileInput?.files?.[0]) {
-    fileUrl = URL.createObjectURL(fileInput.files[0]);
+    const file = fileInput.files[0];
+    fileUrl = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result || '');
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
   }
 
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
@@ -1367,6 +1382,13 @@ async function salvarModalExame(event) {
     card.className = 'exam-card';
     card.style.background = '#f0fdf9';
     card.style.border = '1px solid #a7f3d0';
+
+    const tituloEnc = encodeURIComponent(titulo);
+    const fileUrlEnc = encodeURIComponent(fileUrl || '');
+    const laudoTextoEnc = encodeURIComponent(resumo);
+    const dataBrEnc = encodeURIComponent(dataBr);
+    const labEnc = encodeURIComponent(lab);
+
     card.innerHTML = `
       <div>
         <div class="exam-card-top">
@@ -1382,7 +1404,7 @@ async function salvarModalExame(event) {
           ${resumo}
         </p>
       </div>
-      <button type="button" class="btn-secondary" style="width: 100%;" onclick="visualizarExameSimulado('${titulo}', '${fileUrl}')">
+      <button type="button" class="btn-secondary" style="width: 100%;" onclick="visualizarExameSimulado('${tituloEnc}', '${fileUrlEnc}', '${laudoTextoEnc}', '${dataBrEnc}', '${labEnc}', true)">
         <i class="fa-solid fa-file-pdf" style="color: #f43f5e;"></i> Visualizar Laudo Assinado (PDF)
       </button>
     `;
@@ -1393,10 +1415,41 @@ async function salvarModalExame(event) {
   showToast('Laudo Anexado', `Exame [${titulo}] vinculado ao prontuário e salvo no Supabase.`, 'fa-file-pdf', 'success');
 }
 
-function visualizarExameSimulado(titulo, customFileUrl) {
+function visualizarExameSimulado(titulo, customFileUrl, laudoTexto, dataRealizacao, labNome, isEncoded) {
+  if (isEncoded) {
+    try {
+      titulo = decodeURIComponent(titulo || '');
+      customFileUrl = decodeURIComponent(customFileUrl || '');
+      laudoTexto = decodeURIComponent(laudoTexto || '');
+      dataRealizacao = decodeURIComponent(dataRealizacao || '');
+      labNome = decodeURIComponent(labNome || '');
+    } catch (e) {}
+  }
+
   if (customFileUrl) {
-    window.open(customFileUrl, '_blank');
-    return;
+    if (customFileUrl.startsWith('data:')) {
+      const win = window.open('', '_blank', 'width=850,height=900');
+      if (win) {
+        win.document.write(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>Laudo - ${titulo || 'Exame'}</title>
+            <style>body { margin: 0; padding: 0; background: #525659; overflow: hidden; }</style>
+          </head>
+          <body>
+            <iframe src="${customFileUrl}" style="border:none; width:100vw; height:100vh;" allowfullscreen></iframe>
+          </body>
+          </html>
+        `);
+        win.document.close();
+        return;
+      }
+    } else if (customFileUrl.startsWith('http://') || customFileUrl.startsWith('https://')) {
+      window.open(customFileUrl, '_blank');
+      return;
+    }
   }
 
   const win = window.open('', '_blank', 'width=750,height=850');
@@ -1410,7 +1463,7 @@ function visualizarExameSimulado(titulo, customFileUrl) {
     <html lang="pt-BR">
     <head>
       <meta charset="UTF-8">
-      <title>Laudo Laboratorial - ${titulo}</title>
+      <title>Laudo Laboratorial - ${titulo || 'Exame'}</title>
       <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; color: #0f172a; line-height: 1.6; }
         .laudo-box { max-width: 650px; margin: 0 auto; border: 1px solid #cbd5e1; border-radius: 12px; padding: 30px; }
@@ -1423,7 +1476,7 @@ function visualizarExameSimulado(titulo, customFileUrl) {
       <div class="laudo-box">
         <div class="hdr">
           <div>
-            <h2 style="color: #00735c; margin: 0;">🔬 LabVet Diagnósticos Clínicos</h2>
+            <h2 style="color: #00735c; margin: 0;">🔬 ${labNome || 'LabVet Diagnósticos Clínicos'}</h2>
             <span style="font-size: 13px; color: #64748b;">Laudo Oficial Assinado Digitalmente</span>
           </div>
           <div><strong>Status:</strong> Normal</div>
@@ -1431,11 +1484,11 @@ function visualizarExameSimulado(titulo, customFileUrl) {
         <div class="meta">
           <div><strong>Exame:</strong> ${titulo}</div>
           <div><strong>Paciente:</strong> ${petNome}</div>
-          <div><strong>Data da Emissão:</strong> ${new Date().toLocaleDateString('pt-BR')}</div>
+          <div><strong>Data da Realização:</strong> ${dataRealizacao || new Date().toLocaleDateString('pt-BR')}</div>
           <div><strong>Responsável Técnico:</strong> Dra. Juliana Paes (CRMV-SP 51.204)</div>
         </div>
         <h3>Resultado e Interpretação Clínica:</h3>
-        <p>Amostra processada conforme normas internacionais de patologia veterinária. Todos os índices quantitativos e qualitativos mantêm-se em consonância com os padrões fisiológicos esperados para a espécie e faixa etária.</p>
+        <p>${laudoTexto || 'Amostra processada conforme normas internacionais de patologia veterinária. Todos os índices quantitativos e qualitativos mantêm-se em consonância com os padrões fisiológicos esperados para a espécie e faixa etária.'}</p>
         <div class="footer">
           Documento emitido com assinatura eletrônica e certificado digital padrão ICP-Brasil.
         </div>
@@ -1538,16 +1591,18 @@ async function salvarEvolucaoClinica(event) {
   showToast('Evolução Registrada!', 'Nova consulta assinada com CRMV-SP 38.412, gravada no Supabase e inserida na Linha do Tempo.', 'fa-signature', 'success');
 }
 
-function abrirModalEmitirReceita() {
+async function abrirModalEmitirReceita() {
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
   const petNome = pacienteAtualProntuario?.nome || session?.pet?.nome || 'Paciente';
   const petRaca = pacienteAtualProntuario?.raca || session?.pet?.raca || 'SRD';
-  const tutorNome = session?.tutor?.nome || 'Tutor Responsável';
+  const tutorNome = pacienteAtualProntuario?.tutor_nome || session?.tutor?.nome || 'Tutor Responsável';
+  const targetId = resolverPetIdSupabase(pacienteAtualProntuario?.id || session?.pet?.id);
 
   const rxPet = document.getElementById('rx-print-pet-nome');
   const rxRaca = document.getElementById('rx-print-pet-raca');
   const rxTutor = document.getElementById('rx-print-tutor-nome');
   const rxData = document.getElementById('rx-print-data');
+  const medsList = document.getElementById('rx-print-meds-list');
 
   if (rxPet) rxPet.textContent = petNome;
   if (rxRaca) rxRaca.textContent = petRaca;
@@ -1556,6 +1611,64 @@ function abrirModalEmitirReceita() {
 
   const modal = document.getElementById('modal-rx-print-backdrop');
   if (modal) modal.classList.add('open');
+
+  if (medsList) {
+    medsList.innerHTML = `
+      <div style="padding: 1.5rem; text-align: center; color: #64748b; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px;">
+        <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--teal-primary); font-size: 1.3rem; margin-bottom: 0.4rem; display: block;"></i>
+        Consultando prescrições ativas no banco de dados...
+      </div>
+    `;
+
+    try {
+      const resp = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/prescricoes?pet_id=eq.${targetId}&ativa=eq.true&order=created_at.desc`, {
+        headers: {
+          'apikey': SUPABASE_CONFIG.anonKey,
+          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+        }
+      });
+
+      if (resp.ok) {
+        const prescricoes = await resp.json();
+        if (prescricoes && prescricoes.length > 0) {
+          medsList.innerHTML = prescricoes.map((p, idx) => `
+            <div class="rx-print-item-card" data-rx-id="${p.id || ''}" style="padding: 0.9rem 1rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 0.8rem; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.8rem; margin-bottom: 0.4rem;">
+                <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; flex: 1; margin: 0;">
+                  <input type="checkbox" class="rx-print-checkbox" checked style="accent-color: var(--teal-primary); width: 17px; height: 17px; cursor: pointer;">
+                  <span class="rx-item-nome" style="font-weight: 700; color: #0f172a; font-size: 0.95rem;">${idx + 1}. ${p.nome}</span>
+                </label>
+                <span class="badge-status badge-success rx-item-tipo" style="font-size: 0.72rem;">${p.tipo || 'Uso Veterinário'}</span>
+              </div>
+              <div style="font-size: 0.8rem; color: #475569; margin-bottom: 0.5rem; padding-left: 1.7rem;">
+                <strong>Indicação:</strong> <span class="rx-item-indicacao-text">${p.indicacao || 'Terapêutica clínica animal'}</span>
+              </div>
+              <div style="padding-left: 1.7rem;">
+                <label style="display: block; font-size: 0.76rem; font-weight: 600; color: #334155; margin-bottom: 0.25rem;">
+                  Posologia & Modo de Uso (Ajustável antes da impressão):
+                </label>
+                <textarea class="form-input rx-item-posologia" rows="2" style="font-size: 0.82rem; padding: 0.5rem; width: 100%; border-radius: 6px; resize: vertical; line-height: 1.4;">${p.posologia || 'Conforme orientação veterinária.'}</textarea>
+              </div>
+            </div>
+          `).join('');
+          return;
+        }
+      }
+    } catch (errRx) {
+      console.warn('[PetStory] Erro ao carregar prescrições para receita:', errRx);
+    }
+
+    medsList.innerHTML = `
+      <div style="text-align: center; padding: 1.8rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; color: #64748b;">
+        <i class="fa-solid fa-pills" style="font-size: 1.8rem; color: #94a3b8; margin-bottom: 0.5rem; display: block;"></i>
+        <strong style="color: #334155; font-size: 0.95rem;">Nenhum medicamento ativo prescrito para este paciente no momento.</strong><br>
+        <p style="font-size: 0.82rem; margin: 0.5rem 0 1rem; color: #64748b;">Para emitir uma receita, registre primeiro os medicamentos necessários.</p>
+        <button type="button" class="btn-primary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem;" onclick="fecharModalEmitirReceita(); abrirModalNovaPrescricao();">
+          <i class="fa-solid fa-plus"></i> Nova Prescrição Médica
+        </button>
+      </div>
+    `;
+  }
 }
 
 function fecharModalEmitirReceita() {

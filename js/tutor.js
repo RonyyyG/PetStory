@@ -63,11 +63,6 @@ async function finalizarCadastroPet() {
   const tutorCidade = document.getElementById('cad-tutor-cidade')?.value.trim() || 'São Paulo - SP';
   const tutorEmail = document.getElementById('cad-tutor-email')?.value.trim().toLowerCase() || 'tutor@petstory.app';
   const tutorSenha = document.getElementById('cad-tutor-senha')?.value;
-  if (tutorSenha) {
-    if (typeof salvarCredencialTutor === 'function') {
-      salvarCredencialTutor(tutorEmail, tutorSenha);
-    }
-  }
 
   const petNome = document.getElementById('cad-pet-nome')?.value.trim();
   if (!petNome) {
@@ -225,8 +220,6 @@ async function renderTutorPortal(tutor, pet, tagCode) {
   const greetingName = document.getElementById('tutor-greeting-name');
   const greetingDesc = document.getElementById('tutor-greeting-desc');
   const heroTagDisplay = document.getElementById('tutor-hero-tag-display');
-  const tagCodeBadge = document.getElementById('tutor-tag-code-badge');
-  const tagBoxTitle = document.getElementById('tutor-tag-box-title');
   const lostModeDesc = document.getElementById('tutor-lost-mode-desc');
   const allergiesContainer = document.getElementById('tutor-allergies-container');
   const vaxList = document.getElementById('tutor-vax-list');
@@ -247,8 +240,6 @@ async function renderTutorPortal(tutor, pet, tagCode) {
 
   // Destaque visual da Tag
   if (heroTagDisplay) heroTagDisplay.textContent = codigo;
-  if (tagCodeBadge) tagCodeBadge.textContent = `ID: ${codigo}-${pNome.toUpperCase()}`;
-  if (tagBoxTitle) tagBoxTitle.textContent = `Medalha Inteligente de ${pNome}`;
   if (lostModeDesc) {
     lostModeDesc.textContent = `Se o(a) ${pNome} se perder, ative este modo. Quem escanear a medalha verá alerta de emergência e você receberá aviso por WhatsApp.`;
   }
@@ -497,6 +488,69 @@ async function renderTutorPortal(tutor, pet, tagCode) {
       }
     }
   }
+
+  // Carrega Laudos & Exames Diagnósticos do Supabase
+  await carregarExamesTutor(petId || codigo);
+}
+
+async function carregarExamesTutor(petId) {
+  const examesListElem = document.getElementById('tutor-exames-list');
+  if (!examesListElem) return;
+
+  const targetPetId = typeof resolverPetIdSupabase === 'function'
+    ? resolverPetIdSupabase(petId)
+    : (petId || '7e096a3b-0468-4347-9bee-a8286a10d416');
+
+  try {
+    const resp = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/exames?pet_id=eq.${targetPetId}&order=data_realizacao.desc`, {
+      headers: {
+        'apikey': SUPABASE_CONFIG.anonKey,
+        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+      }
+    });
+
+    if (resp.ok) {
+      const exames = await resp.json();
+      if (exames && exames.length > 0) {
+        examesListElem.innerHTML = exames.map(ex => {
+          const dataFmt = formatarDataBr(ex.data_realizacao) || ex.data_realizacao || 'Data recente';
+          const tituloEnc = encodeURIComponent(ex.titulo || 'Laudo Diagnóstico');
+          const fileUrlEnc = encodeURIComponent(ex.arquivo_url || '');
+          const laudoTextoEnc = encodeURIComponent(ex.laudo_texto || '');
+          const dataFmtEnc = encodeURIComponent(dataFmt);
+          const labEnc = encodeURIComponent(ex.laboratorio || 'LabVet Diagnósticos');
+
+          return `
+            <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem; border-left: 4px solid var(--teal-primary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem;">
+                  <i class="fa-solid fa-file-medical" style="color: #00735c;"></i>
+                  <strong style="color: #0f172a; font-size: 0.95rem;">${ex.titulo}</strong>
+                </div>
+                <div style="font-size: 0.8rem; color: #64748b;">
+                  <span>${ex.laboratorio || 'LabVet'} • Realizado em: ${dataFmt}</span>
+                </div>
+                ${ex.laudo_texto ? `<div style="font-size: 0.78rem; color: #475569; margin-top: 0.3rem; max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${ex.laudo_texto}</div>` : ''}
+              </div>
+              <button type="button" class="btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;" onclick="visualizarExameSimulado('${tituloEnc}', '${fileUrlEnc}', '${laudoTextoEnc}', '${dataFmtEnc}', '${labEnc}', true)">
+                <i class="fa-solid fa-file-pdf" style="color: #f43f5e;"></i> Visualizar / Baixar Laudo
+              </button>
+            </div>
+          `;
+        }).join('');
+        return;
+      }
+    }
+  } catch (errEx) {
+    console.warn('Erro ao carregar exames do tutor:', errEx);
+  }
+
+  examesListElem.innerHTML = `
+    <div style="text-align: center; padding: 1.5rem; color: #64748b; font-size: 0.85rem; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+      <i class="fa-solid fa-file-pdf" style="font-size: 1.5rem; margin-bottom: 0.4rem; color: #94a3b8; display: block;"></i>
+      Nenhum laudo ou exame diagnóstico anexado para este animal ainda.
+    </div>
+  `;
 }
 
 function copiarTagTutor() {
@@ -1008,6 +1062,7 @@ function openWhatsappSimulated() {
 window.avancarWizard = avancarWizard;
 window.finalizarCadastroPet = finalizarCadastroPet;
 window.renderTutorPortal = renderTutorPortal;
+window.carregarExamesTutor = carregarExamesTutor;
 window.copiarTagTutor = copiarTagTutor;
 window.imprimirTagSimulada = imprimirTagSimulada;
 window.handlePetPhotoUpload = handlePetPhotoUpload;

@@ -1,19 +1,24 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PetStory • Prontuário Unificado & Identificação Inteligente</title>
-  
+
   <!-- Favicon -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐾</text></svg>">
-  
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐾</text></svg>">
+
   <!-- Font Awesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+
   <!-- Custom Stylesheet -->
   <link rel="stylesheet" href="css/styles.css">
 </head>
+
 <body>
 
   <!-- Ambient background glow elements -->
@@ -81,14 +86,16 @@
               <label class="form-label">E-mail Cadastrado</label>
               <div class="input-with-icon">
                 <i class="fa-solid fa-envelope"></i>
-                <input type="email" class="form-input" id="login-tutor-email" placeholder="seu.email@exemplo.com" required>
+                <input type="email" class="form-input" id="login-tutor-email" placeholder="seu.email@exemplo.com"
+                  required>
               </div>
             </div>
 
             <div class="form-group">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
                 <label class="form-label" style="margin-bottom: 0;">Senha de Acesso</label>
-                <a href="javascript:void(0)" onclick="abrirModalRedefinirSenha()" style="font-size: 0.78rem; color: var(--teal-primary); font-weight: 600; text-decoration: underline;">
+                <a href="javascript:void(0)" onclick="abrirModalRedefinirSenha()"
+                  style="font-size: 0.78rem; color: var(--teal-primary); font-weight: 600; text-decoration: underline;">
                   Esqueci / Redefinir
                 </a>
               </div>
@@ -103,8 +110,9 @@
             </button>
 
             <div style="text-align: center; margin-top: 1.5rem; font-size: 0.88rem; color: var(--text-secondary);">
-              Não tem conta ainda? 
-              <a href="#cadastro" onclick="switchScreen('cadastro'); return false;" style="color: var(--teal-primary); font-weight: 700; text-decoration: underline;">
+              Não tem conta ainda?
+              <a href="#cadastro" onclick="switchScreen('cadastro'); return false;"
+                style="color: var(--teal-primary); font-weight: 700; text-decoration: underline;">
                 Cadastrar você e seu pet agora
               </a>
             </div>
@@ -116,7 +124,8 @@
               <label class="form-label">E-mail Profissional</label>
               <div class="input-with-icon">
                 <i class="fa-solid fa-envelope"></i>
-                <input type="email" class="form-input" id="login-vet-email" placeholder="dr.nome@clinica.com" value="ricardo.mendonca@vet.com">
+                <input type="email" class="form-input" id="login-vet-email" placeholder="dr.nome@clinica.com"
+                  value="ricardo.mendonca@vet.com">
               </div>
             </div>
 
@@ -228,7 +237,8 @@
                 <label class="form-label">E-mail para Login</label>
                 <div class="input-with-icon">
                   <i class="fa-solid fa-envelope"></i>
-                  <input type="email" id="cad-tutor-email" class="form-input" placeholder="seu.email@exemplo.com" required>
+                  <input type="email" id="cad-tutor-email" class="form-input" placeholder="seu.email@exemplo.com"
+                    required>
                 </div>
               </div>
               <div class="form-group">
@@ -277,11 +287,13 @@
             <div class="form-row-2">
               <div class="form-group">
                 <label class="form-label">Raça</label>
-                <input type="text" id="cad-pet-raca" class="form-input" placeholder="Ex: SRD, Poodle, Labrador..." style="padding-left: 1rem;">
+                <input type="text" id="cad-pet-raca" class="form-input" placeholder="Ex: SRD, Poodle, Labrador..."
+                  style="padding-left: 1rem;">
               </div>
               <div class="form-group">
                 <label class="form-label">Peso Atual (kg)</label>
-                <input type="text" id="cad-pet-peso" class="form-input" placeholder="Ex: 12.5" style="padding-left: 1rem;">
+                <input type="text" id="cad-pet-peso" class="form-input" placeholder="Ex: 12.5"
+                  style="padding-left: 1rem;">
               </div>
             </div>
 
@@ -303,9 +315,12 @@
 
             <div class="form-group">
               <label class="form-label" style="color: var(--danger-text);">
-                <i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i> Alergias Severas / Restrições Médicas (Alerta Vermelho)
+                <i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i> Alergias Severas /
+                Restrições Médicas (Alerta Vermelho)
               </label>
-              <input type="text" id="cad-pet-alergias" class="form-input" placeholder="Ex: Dipirona, Sulfas, ou digite 'Nenhuma'" style="padding-left: 1rem; border-color: #fda4af; background: #fff1f2;">
+              <input type="text" id="cad-pet-alergias" class="form-input"
+                placeholder="Ex: Dipirona, Sulfas, ou digite 'Nenhuma'"
+                style="padding-left: 1rem; border-color: #fda4af; background: #fff1f2;">
             </div>
 
             <div style="display: flex; justify-content: space-between; margin-top: 1.5rem;">
@@ -321,11 +336,13 @@
           <!-- PASSO 3: TAG GERADA COM SUCESSO -->
           <div class="wizard-step-content" id="wizard-step-3">
             <div class="tag-showcase-box">
-              <div style="width: 52px; height: 52px; border-radius: 50%; background: var(--teal-tint); color: var(--teal-dark); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 1rem;">
+              <div
+                style="width: 52px; height: 52px; border-radius: 50%; background: var(--teal-tint); color: var(--teal-dark); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 1rem;">
                 <i class="fa-solid fa-check"></i>
               </div>
 
-              <h2 style="font-size: 1.6rem; color: #0f172a; margin-bottom: 0.3rem;">Parabéns! Tag Gerada com Sucesso</h2>
+              <h2 style="font-size: 1.6rem; color: #0f172a; margin-bottom: 0.3rem;">Parabéns! Tag Gerada com Sucesso
+              </h2>
               <p style="font-size: 0.88rem; color: var(--text-secondary); max-width: 460px; margin: 0 auto;">
                 A medalha inteligente do seu pet está registrada no banco de dados e pronta para uso imediato.
               </p>
@@ -335,7 +352,9 @@
               </div>
 
               <!-- Generated QR Image / Container (Local Render) -->
-              <div id="created-qr-container" style="display: flex; justify-content: center; align-items: center; margin: 1rem auto; padding: 10px; background: #ffffff; border-radius: 12px; width: 180px; height: 180px; box-shadow: 0 4px 14px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;"></div>
+              <div id="created-qr-container"
+                style="display: flex; justify-content: center; align-items: center; margin: 1rem auto; padding: 10px; background: #ffffff; border-radius: 12px; width: 180px; height: 180px; box-shadow: 0 4px 14px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+              </div>
 
               <div style="display: flex; gap: 0.8rem; justify-content: center; flex-wrap: wrap;">
                 <button type="button" class="btn-secondary" onclick="imprimirTagSimulada()">
@@ -356,18 +375,22 @@
          TELA 3: PORTAL CLÍNICO DO VETERINÁRIO (LEITOR QR / CÓDIGO DA TAG + OTP)
          ==================================================================== -->
     <section id="screen-vet-scan" class="screen-view">
-      <div class="section-header-block" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+      <div class="section-header-block"
+        style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
         <div>
           <span class="level-badge level-clinic">
             <i class="fa-solid fa-user-doctor"></i> Nível 2: Acesso Clínico Autorizado
           </span>
           <h1 class="section-title">Validação e Acesso ao Prontuário Unificado</h1>
           <p class="section-desc">
-            Aproxime a Tag Inteligente NFC da coleira, aponte a câmera para o QR Code ou insira o código alfanumérico para carregar o histórico médico instantâneo.
+            Aproxime a Tag Inteligente NFC da coleira, aponte a câmera para o QR Code ou insira o código alfanumérico
+            para carregar o histórico médico instantâneo.
           </p>
         </div>
         <div style="margin-top: 0.5rem;">
-          <button type="button" class="btn-secondary" style="font-size: 0.85rem; padding: 0.65rem 1rem; border-radius: var(--radius-sm);" onclick="encerrarSessaoVet()" title="Encerrar plantão veterinário e retornar ao login">
+          <button type="button" class="btn-secondary"
+            style="font-size: 0.85rem; padding: 0.65rem 1rem; border-radius: var(--radius-sm);"
+            onclick="encerrarSessaoVet()" title="Encerrar plantão veterinário e retornar ao login">
             <i class="fa-solid fa-arrow-right-from-bracket"></i> Encerrar Plantão / Sair
           </button>
         </div>
@@ -391,10 +414,11 @@
               <span class="frame-corner-tr"></span>
               <span class="frame-corner-bl"></span>
               <div class="laser-line"></div>
-              
+
               <!-- Clean SVG QR Code Representation -->
               <svg class="qr-preview-asset" viewBox="0 0 100 100" fill="currentColor">
-                <path fill="#00d2ad" d="M10 10h30v30h-30z M16 16h18v18h-18z M22 22h6v6h-6z M60 10h30v30h-30z M66 16h18v18h-18z M72 22h6v6h-6z M10 60h30v30h-30z M16 66h18v18h-18z M22 72h6v6h-6z M45 15h10v6h-10z M45 28h10v10h-10z M45 45h10v10h-10z M60 45h6v10h-6z M72 45h18v6h-18z M15 45h10v10h-10z M28 45h10v6h-10z M60 60h6v10h-6z M72 60h8v8h-8z M84 60h6v18h-6z M60 76h14v14h-14z M80 84h10v6h-10z"/>
+                <path fill="#00d2ad"
+                  d="M10 10h30v30h-30z M16 16h18v18h-18z M22 22h6v6h-6z M60 10h30v30h-30z M66 16h18v18h-18z M72 22h6v6h-6z M10 60h30v30h-30z M16 66h18v18h-18z M22 72h6v6h-6z M45 15h10v6h-10z M45 28h10v10h-10z M45 45h10v10h-10z M60 45h6v10h-6z M72 45h18v6h-18z M15 45h10v10h-10z M28 45h10v6h-10z M60 60h6v10h-6z M72 60h8v8h-8z M84 60h6v18h-6z M60 76h14v14h-14z M80 84h10v6h-10z" />
               </svg>
             </div>
 
@@ -435,7 +459,8 @@
                 </label>
                 <div class="input-with-icon">
                   <i class="fa-solid fa-key" style="color: var(--teal-primary);"></i>
-                  <input type="text" id="input-vet-otp" class="form-input" placeholder="Ex: 123456" maxlength="6" style="letter-spacing: 0.15em; font-weight: 700; font-family: monospace;">
+                  <input type="text" id="input-vet-otp" class="form-input" placeholder="Ex: 123456" maxlength="6"
+                    style="letter-spacing: 0.15em; font-weight: 700; font-family: monospace;">
                 </div>
               </div>
             </div>
@@ -444,7 +469,8 @@
               <button type="submit" class="btn-primary" style="flex: 1;">
                 <i class="fa-solid fa-folder-open"></i> Acessar Prontuário Autorizado
               </button>
-              <button type="button" class="btn-danger-outline" id="btn-emergency-override" title="Acesso imediato com registro obrigatório">
+              <button type="button" class="btn-danger-outline" id="btn-emergency-override"
+                title="Acesso imediato com registro obrigatório">
                 <i class="fa-solid fa-kit-medical"></i> Emergência Vital (Sem OTP)
               </button>
             </div>
@@ -468,7 +494,8 @@
               </div>
               <div class="audit-text">
                 <h4>1. Validação de CRMV</h4>
-                <p>O profissional está registrado e ativo no Conselho de Medicina Veterinária com sessão criptografada.</p>
+                <p>O profissional está registrado e ativo no Conselho de Medicina Veterinária com sessão criptografada.
+                </p>
               </div>
             </div>
 
@@ -495,10 +522,9 @@
 
           <!-- Active Doctor ID Badge -->
           <div class="vet-credential-box">
-            <img src="https://images.unsplash.com/photo-1628009368231-7bb7cfcb0def?auto=format&fit=crop&w=150&q=80" 
-                 alt="Dr. Ricardo Mendonça" 
-                 class="vet-credential-avatar"
-                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%2300d2ad%22/><text x=%2250%22 y=%2260%22 font-size=%2240%22 text-anchor=%22middle%22 fill=%22%23000%22>🩺</text></svg>'">
+            <img src="https://images.unsplash.com/photo-1628009368231-7bb7cfcb0def?auto=format&fit=crop&w=150&q=80"
+              alt="Dr. Ricardo Mendonça" class="vet-credential-avatar"
+              onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%2300d2ad%22/><text x=%2250%22 y=%2260%22 font-size=%2240%22 text-anchor=%22middle%22 fill=%22%23000%22>🩺</text></svg>'">
             <div class="vet-credential-info">
               <h4>Dr. Ricardo Mendonça</h4>
               <span>CRMV-SP 38.412 • Clínico Geral & Cirurgião</span>
@@ -509,9 +535,11 @@
           </div>
 
           <!-- Quick status metrics -->
-          <div style="margin-top: 1.5rem; padding-top: 1.2rem; border-top: 1px solid var(--border-glass); display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
+          <div
+            style="margin-top: 1.5rem; padding-top: 1.2rem; border-top: 1px solid var(--border-glass); display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
             <span><i class="fa-solid fa-server" style="color: var(--teal-primary);"></i> Nuvem Integrada</span>
-            <span><i class="fa-solid fa-shield-halved" style="color: var(--teal-primary);"></i> TLS 1.3 End-to-End</span>
+            <span><i class="fa-solid fa-shield-halved" style="color: var(--teal-primary);"></i> TLS 1.3
+              End-to-End</span>
           </div>
         </div>
       </div>
@@ -522,30 +550,29 @@
          TELA 2: PRONTUÁRIO CLÍNICO COMPLETO (PÓS-QR CODE)
          ==================================================================== -->
     <section id="screen-prontuario" class="screen-view">
-      
+
       <!-- Patient Header Info Card -->
       <div class="prontuario-header-card">
         <div class="prontuario-header-grid">
           <!-- Dog Photo -->
           <div class="pet-hero-photo-wrap">
-            <img src="data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' width='100%25' height='100%25'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23e2e8f0'/%3E%3Cstop offset='100%25' stop-color='%23cbd5e1'/%3E%3C/linearGradient%3E%3ClinearGradient id='paw' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300d2ad'/%3E%3Cstop offset='100%25' stop-color='%2300a887'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='120' height='120' rx='24' fill='url(%23bg)'/%3E%3Ccircle cx='60' cy='68' r='24' fill='url(%23paw)'/%3E%3Cellipse cx='38' cy='44' rx='9' ry='13' transform='rotate(-20 38 44)' fill='url(%23paw)'/%3E%3Cellipse cx='53' cy='36' rx='9' ry='14' transform='rotate(-6 53 36)' fill='url(%23paw)'/%3E%3Cellipse cx='67' cy='36' rx='9' ry='14' transform='rotate(6 67 36)' fill='url(%23paw)'/%3E%3Cellipse cx='82' cy='44' rx='9' ry='13' transform='rotate(20 82 44)' fill='url(%23paw)'/%3E%3C/svg%3E" 
-                 alt="Foto do Paciente" 
-                 class="pet-hero-photo"
-                 id="prontuario-pet-photo"
-                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23e2e8f0%22/><text x=%2250%22 y=%2260%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22%2300d2ad%22>🐾</text></svg>'">
+            <img
+              src="data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' width='100%25' height='100%25'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23e2e8f0'/%3E%3Cstop offset='100%25' stop-color='%23cbd5e1'/%3E%3C/linearGradient%3E%3ClinearGradient id='paw' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300d2ad'/%3E%3Cstop offset='100%25' stop-color='%2300a887'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='120' height='120' rx='24' fill='url(%23bg)'/%3E%3Ccircle cx='60' cy='68' r='24' fill='url(%23paw)'/%3E%3Cellipse cx='38' cy='44' rx='9' ry='13' transform='rotate(-20 38 44)' fill='url(%23paw)'/%3E%3Cellipse cx='53' cy='36' rx='9' ry='14' transform='rotate(-6 53 36)' fill='url(%23paw)'/%3E%3Cellipse cx='67' cy='36' rx='9' ry='14' transform='rotate(6 67 36)' fill='url(%23paw)'/%3E%3Cellipse cx='82' cy='44' rx='9' ry='13' transform='rotate(20 82 44)' fill='url(%23paw)'/%3E%3C/svg%3E"
+              alt="Foto do Paciente" class="pet-hero-photo" id="prontuario-pet-photo"
+              onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23e2e8f0%22/><text x=%2250%22 y=%2260%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22%2300d2ad%22>🐾</text></svg>'">
             <span class="pet-status-online">TAG ATIVA</span>
           </div>
 
           <!-- Patient Main Data -->
           <div class="pet-main-info">
             <h2>
-              <span id="prontuario-pet-nome">Paciente</span> 
+              <span id="prontuario-pet-nome">Paciente</span>
               <span class="pet-breed-tag" id="prontuario-pet-raca">Raça</span>
               <span class="badge-status badge-success" style="font-size: 0.72rem;">
                 <i class="fa-solid fa-circle-check"></i> Prontuário Unificado Ativo
               </span>
             </h2>
-            
+
             <div class="pet-meta-row">
               <span class="pet-meta-item">
                 <i class="fa-solid fa-venus-mars" style="color: var(--teal-primary);"></i>
@@ -558,7 +585,8 @@
               <span class="pet-meta-item">
                 <i class="fa-solid fa-weight-scale" style="color: var(--teal-primary);"></i>
                 Peso: <strong id="prontuario-pet-peso">-</strong>
-                <button type="button" class="btn-quick-edit" onclick="editarPesoProntuario()" title="Atualizar peso na balança">
+                <button type="button" class="btn-quick-edit" onclick="editarPesoProntuario()"
+                  title="Atualizar peso na balança">
                   <i class="fa-solid fa-pencil"></i>
                 </button>
               </span>
@@ -572,25 +600,32 @@
               </span>
             </div>
 
-            <div style="margin-top: 0.9rem; font-size: 0.85rem; color: var(--text-secondary); display: flex; flex-wrap: wrap; gap: 1rem;">
-              <span><i class="fa-solid fa-user" style="color: #60a5fa;"></i> Tutor(a): <strong id="prontuario-tutor-nome">Tutor Responsável</strong></span>
-              <span><i class="fa-solid fa-phone" style="color: #60a5fa;"></i> <strong id="prontuario-tutor-tel">-</strong></span>
-              <span><i class="fa-solid fa-location-dot" style="color: #60a5fa;"></i> <span id="prontuario-tutor-cidade">-</span></span>
+            <div
+              style="margin-top: 0.9rem; font-size: 0.85rem; color: var(--text-secondary); display: flex; flex-wrap: wrap; gap: 1rem;">
+              <span><i class="fa-solid fa-user" style="color: #60a5fa;"></i> Tutor(a): <strong
+                  id="prontuario-tutor-nome">Tutor Responsável</strong></span>
+              <span><i class="fa-solid fa-phone" style="color: #60a5fa;"></i> <strong
+                  id="prontuario-tutor-tel">-</strong></span>
+              <span><i class="fa-solid fa-location-dot" style="color: #60a5fa;"></i> <span
+                  id="prontuario-tutor-cidade">-</span></span>
             </div>
           </div>
 
           <!-- Action Buttons -->
           <div class="prontuario-actions-col">
-            <span class="badge-status badge-success" style="background: rgba(0, 210, 173, 0.15); border-color: var(--teal-primary);">
+            <span class="badge-status badge-success"
+              style="background: rgba(0, 210, 173, 0.15); border-color: var(--teal-primary);">
               <i class="fa-solid fa-clock"></i> Sessão Clínica Ativa
             </span>
             <button type="button" class="btn-primary" id="btn-new-prescription" onclick="abrirModalEmitirReceita()">
               <i class="fa-solid fa-prescription"></i> Emitir Receita
             </button>
-            <button type="button" class="btn-secondary" onclick="finalizarAtendimentoClinico()" title="Concluir consulta e voltar ao leitor de tags">
+            <button type="button" class="btn-secondary" onclick="finalizarAtendimentoClinico()"
+              title="Concluir consulta e voltar ao leitor de tags">
               <i class="fa-solid fa-arrow-left"></i> Nova Leitura
             </button>
-            <button type="button" class="btn-danger-outline" style="font-size: 0.8rem; padding: 0.45rem 0.8rem;" onclick="encerrarSessaoVet()" title="Finalizar plantão e voltar ao login">
+            <button type="button" class="btn-danger-outline" style="font-size: 0.8rem; padding: 0.45rem 0.8rem;"
+              onclick="encerrarSessaoVet()" title="Finalizar plantão e voltar ao login">
               <i class="fa-solid fa-arrow-right-from-bracket"></i> Sair do Plantão
             </button>
           </div>
@@ -607,17 +642,19 @@
             <i class="fa-solid fa-heart-pulse"></i> GESTÃO CLÍNICA CRÍTICA & RESTRIÇÕES ANESTÉSICAS
           </h4>
           <p style="font-size: 0.88rem; color: #9f1239; font-weight: 500; line-height: 1.45;">
-            <strong>Atenção Veterinária Imediata:</strong> Paciente com histórico médico registrado. Conferir medicamentos contínuos e restrições antes de qualquer protocolo cirúrgico ou sedação.
+            <strong>Atenção Veterinária Imediata:</strong> Paciente com histórico médico registrado. Conferir
+            medicamentos contínuos e restrições antes de qualquer protocolo cirúrgico ou sedação.
           </p>
           <div class="alert-tags-row" id="prontuario-alerts-row">
-            <span class="alert-tag-item" id="prontuario-alert-alergia">
-              <i class="fa-solid fa-ban"></i> ALERGIA GRAVE: Dipirona e Cefalexina
+            <span class="alert-tag-item" id="prontuario-alert-alergia" style="display: none;">
+              <i class="fa-solid fa-ban"></i> ALERGIAS: Nenhuma
             </span>
-            <span class="alert-tag-item" id="prontuario-alert-anestesica">
-              <i class="fa-solid fa-syringe"></i> RESTRIÇÃO ANESTÉSICA: Bradicardia induzida por Alfa-2 Agonistas
+            <span class="alert-tag-item" id="prontuario-alert-anestesica" style="display: none;">
+              <i class="fa-solid fa-syringe"></i> RESTRIÇÃO ANESTÉSICA: Nenhuma
             </span>
-            <span class="alert-tag-item" id="prontuario-alert-cronica" style="background: #fef3c7; border-color: #fde68a; color: #92400e;">
-              <i class="fa-solid fa-notes-medical"></i> CONDIÇÃO CRÔNICA: Dermatite Atópica Canina
+            <span class="alert-tag-item" id="prontuario-alert-cronica"
+              style="display: none; background: #fef3c7; border-color: #fde68a; color: #92400e;">
+              <i class="fa-solid fa-notes-medical"></i> CONDIÇÃO CRÔNICA: Nenhuma
             </span>
           </div>
         </div>
@@ -649,7 +686,8 @@
       <div id="tab-resumo" class="tab-panel active">
         <!-- Clinical Timeline (Rastreabilidade Total) -->
         <div class="timeline-card">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.8rem;">
+          <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.8rem;">
             <div>
               <h3 style="font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
                 <i class="fa-solid fa-timeline" style="color: var(--teal-primary);"></i>
@@ -659,14 +697,17 @@
                 Histórico integrado e inalterável com identificação de CRMV e assinatura eletrônica.
               </p>
             </div>
-            <button type="button" class="btn-primary" style="font-size: 0.85rem; padding: 0.55rem 1rem;" onclick="document.querySelector('.tab-btn[data-tab=\'nova-evolucao\']')?.click()">
+            <button type="button" class="btn-primary" style="font-size: 0.85rem; padding: 0.55rem 1rem;"
+              onclick="document.querySelector('.tab-btn[data-tab=\'nova-evolucao\']')?.click()">
               <i class="fa-solid fa-notes-medical"></i> Nova Evolução Clínica
             </button>
           </div>
 
           <div class="timeline-list" id="prontuario-timeline-list" style="margin-top: 1.2rem;">
-            <div style="text-align: center; color: var(--text-muted); padding: 2rem 1rem; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
-              <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--teal-primary); font-size: 1.5rem; margin-bottom: 0.5rem; display: block;"></i>
+            <div
+              style="text-align: center; color: var(--text-muted); padding: 2rem 1rem; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+              <i class="fa-solid fa-circle-notch fa-spin"
+                style="color: var(--teal-primary); font-size: 1.5rem; margin-bottom: 0.5rem; display: block;"></i>
               Carregando histórico clínico do paciente no Supabase...
             </div>
           </div>
@@ -676,7 +717,8 @@
       <!-- TAB 2: VACINAS E PREVENÇÃO SANITÁRIA -->
       <div id="tab-vacinas" class="tab-panel">
         <div class="card-glass" style="margin-bottom: 2rem;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 0.8rem;">
+          <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 0.8rem;">
             <div>
               <h3 style="font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem;">
                 <i class="fa-solid fa-syringe" style="color: var(--teal-primary);"></i>
@@ -686,7 +728,8 @@
                 Registro com lote, data de reforço e assinatura eletrônica do médico veterinário.
               </p>
             </div>
-            <button type="button" class="btn-primary" style="font-size: 0.85rem; padding: 0.6rem 1.1rem;" onclick="abrirModalNovaVacina()">
+            <button type="button" class="btn-primary" style="font-size: 0.85rem; padding: 0.6rem 1.1rem;"
+              onclick="abrirModalNovaVacina()">
               <i class="fa-solid fa-plus"></i> Registrar Nova Vacina
             </button>
           </div>
@@ -706,7 +749,8 @@
               <tbody id="prontuario-vax-tbody">
                 <tr>
                   <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
-                    <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--teal-primary); font-size: 1.3rem; margin-bottom: 0.4rem; display: block;"></i>
+                    <i class="fa-solid fa-circle-notch fa-spin"
+                      style="color: var(--teal-primary); font-size: 1.3rem; margin-bottom: 0.4rem; display: block;"></i>
                     Carregando vacinas registradas no Supabase...
                   </td>
                 </tr>
@@ -717,12 +761,14 @@
 
         <!-- Parasite Protection Box -->
         <div class="card-glass">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.8rem;">
+          <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.8rem;">
             <h3 style="font-size: 1.15rem; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
               <i class="fa-solid fa-shield-virus" style="color: var(--teal-primary);"></i>
               Controle de Ectoparasitas & Vermífugos
             </h3>
-            <button type="button" class="btn-primary" style="font-size: 0.85rem; padding: 0.5rem 1rem;" onclick="abrirModalNovoVermifugo()">
+            <button type="button" class="btn-primary" style="font-size: 0.85rem; padding: 0.5rem 1rem;"
+              onclick="abrirModalNovoVermifugo()">
               <i class="fa-solid fa-plus"></i> Registrar Dose
             </button>
           </div>
@@ -741,7 +787,8 @@
               <tbody id="prontuario-vermifugos-tbody">
                 <tr>
                   <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.8rem;">
-                    <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--teal-primary); font-size: 1.3rem; margin-bottom: 0.4rem; display: block;"></i>
+                    <i class="fa-solid fa-circle-notch fa-spin"
+                      style="color: var(--teal-primary); font-size: 1.3rem; margin-bottom: 0.4rem; display: block;"></i>
                     Consultando controle de parasitas no Supabase...
                   </td>
                 </tr>
@@ -754,19 +801,23 @@
       <!-- TAB 3: MEDICAMENTOS E PRESCRIÇÕES -->
       <div id="tab-medicamentos" class="tab-panel">
         <div class="card-glass" style="margin-bottom: 2rem;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 0.8rem;">
+          <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 0.8rem;">
             <h3 style="font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
               <i class="fa-solid fa-pills" style="color: var(--teal-primary);"></i>
               Medicamentos de Uso Contínuo & Prescrições Ativas
             </h3>
-            <button type="button" class="btn-primary" style="font-size: 0.85rem; padding: 0.6rem 1.1rem;" onclick="abrirModalNovaPrescricao()">
+            <button type="button" class="btn-primary" style="font-size: 0.85rem; padding: 0.6rem 1.1rem;"
+              onclick="abrirModalNovaPrescricao()">
               <i class="fa-solid fa-plus"></i> Nova Prescrição Médica
             </button>
           </div>
 
           <div id="prontuario-prescricoes-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-            <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 2.5rem; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
-              <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--teal-primary); font-size: 1.4rem; margin-bottom: 0.5rem; display: block;"></i>
+            <div
+              style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 2.5rem; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+              <i class="fa-solid fa-circle-notch fa-spin"
+                style="color: var(--teal-primary); font-size: 1.4rem; margin-bottom: 0.5rem; display: block;"></i>
               Carregando prescrições do paciente no Supabase...
             </div>
           </div>
@@ -776,12 +827,14 @@
       <!-- TAB 4: CIRURGIAS E PROCEDIMENTOS -->
       <div id="tab-cirurgias" class="tab-panel">
         <div class="card-glass">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 0.8rem;">
+          <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 0.8rem;">
             <h3 style="font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
               <i class="fa-solid fa-scissors" style="color: var(--teal-primary);"></i>
               Registro de Procedimentos Cirúrgicos & Anestésicos
             </h3>
-            <button type="button" class="btn-primary" style="font-size: 0.85rem; padding: 0.6rem 1.1rem;" onclick="abrirModalNovaCirurgia()">
+            <button type="button" class="btn-primary" style="font-size: 0.85rem; padding: 0.6rem 1.1rem;"
+              onclick="abrirModalNovaCirurgia()">
               <i class="fa-solid fa-calendar-plus"></i> Agendar Cirurgia ou Procedimento
             </button>
           </div>
@@ -800,7 +853,8 @@
               <tbody id="prontuario-cirurgias-tbody">
                 <tr>
                   <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">
-                    <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--teal-primary); font-size: 1.3rem; margin-bottom: 0.4rem; display: block;"></i>
+                    <i class="fa-solid fa-circle-notch fa-spin"
+                      style="color: var(--teal-primary); font-size: 1.3rem; margin-bottom: 0.4rem; display: block;"></i>
                     Carregando cirurgias e procedimentos agendados no Supabase...
                   </td>
                 </tr>
@@ -812,19 +866,23 @@
 
       <!-- TAB 5: LAUDOS E EXAMES -->
       <div id="tab-exames" class="tab-panel">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 0.8rem;">
+        <div
+          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 0.8rem;">
           <h3 style="font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
             <i class="fa-solid fa-file-waveform" style="color: var(--teal-primary);"></i>
             Laudos Laboratoriais & Exames de Imagem
           </h3>
-          <button type="button" class="btn-primary" style="font-size: 0.85rem; padding: 0.6rem 1.1rem;" onclick="abrirModalNovoExame()">
+          <button type="button" class="btn-primary" style="font-size: 0.85rem; padding: 0.6rem 1.1rem;"
+            onclick="abrirModalNovoExame()">
             <i class="fa-solid fa-file-arrow-up"></i> Anexar Novo Laudo / Exame (PDF)
           </button>
         </div>
 
         <div class="exams-grid" id="prontuario-exams-grid">
-          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 2.5rem; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
-            <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--teal-primary); font-size: 1.4rem; margin-bottom: 0.5rem; display: block;"></i>
+          <div
+            style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 2.5rem; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+            <i class="fa-solid fa-circle-notch fa-spin"
+              style="color: var(--teal-primary); font-size: 1.4rem; margin-bottom: 0.5rem; display: block;"></i>
             Carregando laudos e exames anexados no Supabase...
           </div>
         </div>
@@ -838,7 +896,8 @@
             Registrar Nova Consulta ou Procedimento
           </h3>
           <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
-            A anotação clínica será carimbada com seu CRMV-SP 38.412 e entrará imediatamente na Linha do Tempo do animal.
+            A anotação clínica será carimbada com seu CRMV-SP 38.412 e entrará imediatamente na Linha do Tempo do
+            animal.
           </p>
 
           <div class="form-row-2">
@@ -854,17 +913,20 @@
             </div>
             <div class="form-group">
               <label class="form-label">Peso Atual na Balança (kg)</label>
-              <input type="text" class="form-input" id="note-evolution-peso" placeholder="Ex: 12.5" style="padding-left: 1rem;">
+              <input type="text" class="form-input" id="note-evolution-peso" placeholder="Ex: 12.5"
+                style="padding-left: 1rem;">
             </div>
           </div>
 
           <div class="form-group">
             <label class="form-label">Anamnese, Exame Físico & Diagnóstico</label>
-            <textarea id="note-evolution-text" class="form-textarea" placeholder="Descreva a queixa principal do tutor, parâmetros vitais constatados no exame físico, suspeita diagnóstica e conduta prescrita..."></textarea>
+            <textarea id="note-evolution-text" class="form-textarea"
+              placeholder="Descreva a queixa principal do tutor, parâmetros vitais constatados no exame físico, suspeita diagnóstica e conduta prescrita..."></textarea>
           </div>
 
           <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
-            <button type="button" class="btn-secondary" onclick="document.getElementById('note-evolution-text').value = '';">
+            <button type="button" class="btn-secondary"
+              onclick="document.getElementById('note-evolution-text').value = '';">
               Limpar
             </button>
             <button type="submit" class="btn-primary" id="btn-save-note">
@@ -887,7 +949,8 @@
         </span>
         <h1 class="section-title" id="tutor-header-title">Central de Saúde do Pet</h1>
         <p class="section-desc">
-          Acompanhe vacinas em tempo real, controle vermífugos e antipulgas, visualize receitas médicas e autorize consultas clínicas com segurança.
+          Acompanhe vacinas em tempo real, controle vermífugos e antipulgas, visualize receitas médicas e autorize
+          consultas clínicas com segurança.
         </p>
       </div>
 
@@ -896,14 +959,17 @@
         <div class="tutor-hero-text">
           <h2 id="tutor-greeting-name">Olá, Tutor! 👋</h2>
           <p id="tutor-greeting-desc">
-            Acompanhe a saúde do seu pet em tempo real. Consulte vacinas, lembretes e gere códigos de acesso clínico com segurança.
+            Acompanhe a saúde do seu pet em tempo real. Consulte vacinas, lembretes e gere códigos de acesso clínico com
+            segurança.
           </p>
         </div>
         <div style="display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap;">
           <button type="button" class="btn-otp-action" id="btn-open-otp-modal">
             <i class="fa-solid fa-key"></i> Gerar Código OTP para o Veterinário
           </button>
-          <button type="button" class="btn-secondary" style="font-size: 0.85rem; padding: 0.65rem 1.1rem; background: #ffffff; border: 1.5px solid #cbd5e1; color: #334155; font-weight: 700; border-radius: var(--radius-sm); box-shadow: 0 2px 4px rgba(0,0,0,0.06); display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer;" onclick="encerrarSessaoTutor()" title="Sair da conta e voltar ao login">
+          <button type="button" class="btn-secondary"
+            style="font-size: 0.85rem; padding: 0.65rem 1.1rem; background: #ffffff; border: 1.5px solid #cbd5e1; color: #334155; font-weight: 700; border-radius: var(--radius-sm); box-shadow: 0 2px 4px rgba(0,0,0,0.06); display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer;"
+            onclick="encerrarSessaoTutor()" title="Sair da conta e voltar ao login">
             <i class="fa-solid fa-arrow-right-from-bracket" style="color: #e11d48;"></i> Sair / Trocar Conta
           </button>
         </div>
@@ -919,15 +985,18 @@
                 <i class="fa-solid fa-shield-virus" style="color: var(--teal-primary);"></i>
                 Carteirinha de Vacinação Digital
               </h3>
-              <button type="button" class="btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem;" onclick="baixarCarteirinhaPdf()">
+              <button type="button" class="btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.9rem;"
+                onclick="baixarCarteirinhaPdf()">
                 <i class="fa-solid fa-file-pdf"></i> Baixar Carteirinha em PDF
               </button>
             </div>
 
             <div class="vax-list" id="tutor-vax-list">
               <div class="vax-empty-state" style="padding: 1.5rem; text-align: center;">
-                <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--teal-primary, #0d9488); font-size: 1.5rem; margin-bottom: 0.5rem;"></i>
-                <p style="color: var(--text-muted, #64748b); font-size: 0.85rem; margin: 0;">Sincronizando carteirinha com o banco de dados...</p>
+                <i class="fa-solid fa-circle-notch fa-spin"
+                  style="color: var(--teal-primary, #0d9488); font-size: 1.5rem; margin-bottom: 0.5rem;"></i>
+                <p style="color: var(--text-muted, #64748b); font-size: 0.85rem; margin: 0;">Sincronizando carteirinha
+                  com o banco de dados...</p>
               </div>
             </div>
           </div>
@@ -935,15 +1004,18 @@
           <!-- Active Prescriptions Card for Tutor -->
           <div class="card-glass" style="margin-bottom: 2rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-              <h3 style="font-size: 1.15rem; color: #0f172a; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+              <h3
+                style="font-size: 1.15rem; color: #0f172a; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
                 <i class="fa-solid fa-pills" style="color: var(--teal-primary);"></i>
                 Prescrições & Medicamentos Ativos
               </h3>
               <span class="badge-status badge-success" style="font-size: 0.72rem;">Sincronizado Supabase</span>
             </div>
             <div id="tutor-prescricoes-list" style="display: flex; flex-direction: column; gap: 0.8rem;">
-              <div style="text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.85rem; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
-                <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--teal-primary); font-size: 1.3rem; margin-bottom: 0.4rem; display: block;"></i>
+              <div
+                style="text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.85rem; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                <i class="fa-solid fa-circle-notch fa-spin"
+                  style="color: var(--teal-primary); font-size: 1.3rem; margin-bottom: 0.4rem; display: block;"></i>
                 Carregando medicamentos prescritos...
               </div>
             </div>
@@ -952,16 +1024,39 @@
           <!-- Ectoparasites & Deworming Card for Tutor -->
           <div class="card-glass" style="margin-bottom: 2rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-              <h3 style="font-size: 1.15rem; color: #0f172a; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+              <h3
+                style="font-size: 1.15rem; color: #0f172a; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
                 <i class="fa-solid fa-shield-virus" style="color: var(--teal-primary);"></i>
                 Controle de Ectoparasitas & Vermífugos
               </h3>
               <span class="badge-status badge-success" style="font-size: 0.72rem;">Proteção Ativa</span>
             </div>
             <div id="tutor-vermifugos-list" style="display: flex; flex-direction: column; gap: 0.8rem;">
-              <div style="text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.85rem; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
-                <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--teal-primary); font-size: 1.3rem; margin-bottom: 0.4rem; display: block;"></i>
+              <div
+                style="text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.85rem; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                <i class="fa-solid fa-circle-notch fa-spin"
+                  style="color: var(--teal-primary); font-size: 1.3rem; margin-bottom: 0.4rem; display: block;"></i>
                 Consultando histórico de vermífugos e antipulgas...
+              </div>
+            </div>
+          </div>
+
+          <!-- Diagnostic Exams and Reports Card for Tutor -->
+          <div class="card-glass" style="margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <h3
+                style="font-size: 1.15rem; color: #0f172a; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+                <i class="fa-solid fa-file-medical" style="color: var(--teal-primary);"></i>
+                Laudos & Exames Diagnósticos (PDF)
+              </h3>
+              <span class="badge-status badge-success" style="font-size: 0.72rem;">Laudos Oficiais</span>
+            </div>
+            <div id="tutor-exames-list" style="display: flex; flex-direction: column; gap: 0.8rem;">
+              <div
+                style="text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.85rem; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                <i class="fa-solid fa-circle-notch fa-spin"
+                  style="color: var(--teal-primary); font-size: 1.3rem; margin-bottom: 0.4rem; display: block;"></i>
+                Consultando histórico de exames laboratoriais...
               </div>
             </div>
           </div>
@@ -977,11 +1072,11 @@
             </p>
 
             <div id="tutor-allergies-container">
-              <div class="allergy-item-card">
-                <i class="fa-solid fa-skull-crossbones"></i>
+              <div class="allergy-item-card" style="background: #f8fafc; border-color: #e2e8f0;">
+                <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--teal-primary);"></i>
                 <div class="allergy-item-info">
-                  <h5 id="tutor-allergy-title">ALERGIA MEDICAMENTOSA GRAVE: Dipirona e Sulfas</h5>
-                  <p id="tutor-allergy-desc">Histórico de choque anafilático. Nunca administrar derivados de pirazolona.</p>
+                  <h5 style="color: #64748b;">Consultando histórico de saúde...</h5>
+                  <p style="color: #94a3b8;">Verificando restrições medicamentosas e alertas de emergência.</p>
                 </div>
               </div>
             </div>
@@ -993,17 +1088,19 @@
           <!-- Smart Tag Hardware Widget -->
           <div class="collar-tag-widget">
             <div class="collar-photo-wrap">
-              <img src="data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' width='100%25' height='100%25'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23e2e8f0'/%3E%3Cstop offset='100%25' stop-color='%23cbd5e1'/%3E%3C/linearGradient%3E%3ClinearGradient id='paw' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300d2ad'/%3E%3Cstop offset='100%25' stop-color='%2300a887'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='120' height='120' rx='24' fill='url(%23bg)'/%3E%3Ccircle cx='60' cy='68' r='24' fill='url(%23paw)'/%3E%3Cellipse cx='38' cy='44' rx='9' ry='13' transform='rotate(-20 38 44)' fill='url(%23paw)'/%3E%3Cellipse cx='53' cy='36' rx='9' ry='14' transform='rotate(-6 53 36)' fill='url(%23paw)'/%3E%3Cellipse cx='67' cy='36' rx='9' ry='14' transform='rotate(6 67 36)' fill='url(%23paw)'/%3E%3Cellipse cx='82' cy='44' rx='9' ry='13' transform='rotate(20 82 44)' fill='url(%23paw)'/%3E%3C/svg%3E" 
-                   alt="Foto do Pet" 
-                   id="tutor-pet-avatar-img"
-                   onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23e2e8f0%22/><text x=%2250%22 y=%2260%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22%2300d2ad%22>🏷️</text></svg>'">
+              <img
+                src="data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' width='100%25' height='100%25'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23e2e8f0'/%3E%3Cstop offset='100%25' stop-color='%23cbd5e1'/%3E%3C/linearGradient%3E%3ClinearGradient id='paw' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300d2ad'/%3E%3Cstop offset='100%25' stop-color='%2300a887'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='120' height='120' rx='24' fill='url(%23bg)'/%3E%3Ccircle cx='60' cy='68' r='24' fill='url(%23paw)'/%3E%3Cellipse cx='38' cy='44' rx='9' ry='13' transform='rotate(-20 38 44)' fill='url(%23paw)'/%3E%3Cellipse cx='53' cy='36' rx='9' ry='14' transform='rotate(-6 53 36)' fill='url(%23paw)'/%3E%3Cellipse cx='67' cy='36' rx='9' ry='14' transform='rotate(6 67 36)' fill='url(%23paw)'/%3E%3Cellipse cx='82' cy='44' rx='9' ry='13' transform='rotate(20 82 44)' fill='url(%23paw)'/%3E%3C/svg%3E"
+                alt="Foto do Pet" id="tutor-pet-avatar-img"
+                onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23e2e8f0%22/><text x=%2250%22 y=%2260%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22%2300d2ad%22>🏷️</text></svg>'">
               <span class="tag-active-pill">
                 <i class="fa-solid fa-circle-check"></i> TAG CONECTADA
               </span>
-              <button type="button" class="btn-change-pet-photo" onclick="document.getElementById('input-pet-photo-upload').click()" title="Trocar foto do pet">
+              <button type="button" class="btn-change-pet-photo"
+                onclick="document.getElementById('input-pet-photo-upload').click()" title="Trocar foto do pet">
                 <i class="fa-solid fa-camera"></i>
               </button>
-              <input type="file" id="input-pet-photo-upload" accept="image/*" style="display:none;" onchange="handlePetPhotoUpload(event)">
+              <input type="file" id="input-pet-photo-upload" accept="image/*" style="display:none;"
+                onchange="handlePetPhotoUpload(event)">
             </div>
 
             <!-- NOVO: DESTAQUE ELEVADO DA TAG (PST-XXXX) -->
@@ -1017,11 +1114,13 @@
 
             <div style="margin: 1rem 0; font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.6rem;">
               <div style="display: flex; justify-content: space-between;">
-                <span style="color: var(--text-secondary);"><i class="fa-solid fa-qrcode" style="color: var(--teal-primary);"></i> QR Code da Medalha:</span>
+                <span style="color: var(--text-secondary);"><i class="fa-solid fa-qrcode"
+                    style="color: var(--teal-primary);"></i> QR Code da Medalha:</span>
                 <strong style="color: #047857;">Ativo</strong>
               </div>
               <div style="display: flex; justify-content: space-between;">
-                <span style="color: var(--text-secondary);"><i class="fa-solid fa-clock-rotate-left"></i> Sincronização:</span>
+                <span style="color: var(--text-secondary);"><i class="fa-solid fa-clock-rotate-left"></i>
+                  Sincronização:</span>
                 <span>Atualizado</span>
               </div>
             </div>
@@ -1036,7 +1135,8 @@
                 </label>
               </div>
               <p id="tutor-lost-mode-desc" style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.4;">
-                Se o animal se perder, ative este modo. Quem escanear a medalha verá alerta de emergência e você receberá a localização por GPS e WhatsApp.
+                Se o animal se perder, ative este modo. Quem escanear a medalha verá alerta de emergência e você
+                receberá a localização por GPS e WhatsApp.
               </p>
             </div>
           </div>
@@ -1048,8 +1148,10 @@
               Próximos Lembretes
             </h4>
             <div id="tutor-reminders-container">
-              <div style="text-align: center; padding: 1.2rem; font-size: 0.85rem; color: var(--text-muted); background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
-                <i class="fa-solid fa-bell-slash" style="font-size: 1.5rem; margin-bottom: 0.4rem; color: #94a3b8; display: block;"></i>
+              <div
+                style="text-align: center; padding: 1.2rem; font-size: 0.85rem; color: var(--text-muted); background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                <i class="fa-solid fa-bell-slash"
+                  style="font-size: 1.5rem; margin-bottom: 0.4rem; color: #94a3b8; display: block;"></i>
                 Nenhum procedimento agendado no momento.
               </div>
             </div>
@@ -1064,7 +1166,7 @@
          ==================================================================== -->
     <section id="screen-public-tag" class="screen-view">
       <div class="public-tag-container">
-        
+
         <div class="section-header-block" style="text-align: center; margin-bottom: 1.5rem;">
           <span class="level-badge level-public">
             <i class="fa-solid fa-tag"></i> Nível 1: Acesso Público por Tag / QR Code
@@ -1073,14 +1175,14 @@
 
         <div class="public-tag-card">
           <!-- Pet Avatar -->
-          <img src="data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' width='100%25' height='100%25'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23e2e8f0'/%3E%3Cstop offset='100%25' stop-color='%23cbd5e1'/%3E%3C/linearGradient%3E%3ClinearGradient id='paw' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300d2ad'/%3E%3Cstop offset='100%25' stop-color='%2300a887'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='120' height='120' rx='24' fill='url(%23bg)'/%3E%3Ccircle cx='60' cy='68' r='24' fill='url(%23paw)'/%3E%3Cellipse cx='38' cy='44' rx='9' ry='13' transform='rotate(-20 38 44)' fill='url(%23paw)'/%3E%3Cellipse cx='53' cy='36' rx='9' ry='14' transform='rotate(-6 53 36)' fill='url(%23paw)'/%3E%3Cellipse cx='67' cy='36' rx='9' ry='14' transform='rotate(6 67 36)' fill='url(%23paw)'/%3E%3Cellipse cx='82' cy='44' rx='9' ry='13' transform='rotate(20 82 44)' fill='url(%23paw)'/%3E%3C/svg%3E" 
-               alt="Foto do Pet" 
-               class="public-pet-avatar"
-               id="public-tag-photo"
-               onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23e2e8f0%22/><text x=%2250%22 y=%2260%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22%2300d2ad%22>🐕</text></svg>'">
-          
+          <img
+            src="data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' width='100%25' height='100%25'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23e2e8f0'/%3E%3Cstop offset='100%25' stop-color='%23cbd5e1'/%3E%3C/linearGradient%3E%3ClinearGradient id='paw' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300d2ad'/%3E%3Cstop offset='100%25' stop-color='%2300a887'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='120' height='120' rx='24' fill='url(%23bg)'/%3E%3Ccircle cx='60' cy='68' r='24' fill='url(%23paw)'/%3E%3Cellipse cx='38' cy='44' rx='9' ry='13' transform='rotate(-20 38 44)' fill='url(%23paw)'/%3E%3Cellipse cx='53' cy='36' rx='9' ry='14' transform='rotate(-6 53 36)' fill='url(%23paw)'/%3E%3Cellipse cx='67' cy='36' rx='9' ry='14' transform='rotate(6 67 36)' fill='url(%23paw)'/%3E%3Cellipse cx='82' cy='44' rx='9' ry='13' transform='rotate(20 82 44)' fill='url(%23paw)'/%3E%3C/svg%3E"
+            alt="Foto do Pet" class="public-pet-avatar" id="public-tag-photo"
+            onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23e2e8f0%22/><text x=%2250%22 y=%2260%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22%2300d2ad%22>🐕</text></svg>'">
+
           <h1 class="public-tag-title" id="public-tag-pet-name">Você encontrou este Pet? 🐾❤️</h1>
-          <p class="public-tag-subtitle" id="public-tag-pet-subtitle">Identificação Inteligente PetStory • Ajude este animal a voltar para casa!</p>
+          <p class="public-tag-subtitle" id="public-tag-pet-subtitle">Identificação Inteligente PetStory • Ajude este
+            animal a voltar para casa!</p>
 
           <!-- Critical Health Warning Callout (Slide 5: Alerta Médico Imediato) -->
           <div class="public-health-callout">
@@ -1088,7 +1190,9 @@
             <div>
               <h4>AVISO MÉDICO VITAL DO ANIMAL</h4>
               <p id="public-tag-health-warning">
-                Este animal pode possuir <strong>alergias ou necessidade de medicação contínua</strong>. Por favor, <strong>não ofereça comida sem autorização</strong> e entre em contato imediatamente com o tutor responsável.
+                Este animal pode possuir <strong>alergias ou necessidade de medicação contínua</strong>. Por favor,
+                <strong>não ofereça comida sem autorização</strong> e entre em contato imediatamente com o tutor
+                responsável.
               </p>
             </div>
           </div>
@@ -1100,7 +1204,8 @@
               <span id="public-btn-whatsapp-text">Chamar Tutor(a) no WhatsApp</span>
             </button>
 
-            <button type="button" class="btn-call-large" onclick="showToast('Ligando...', 'Discando para (11) 98765-4321...', 'fa-phone')">
+            <button type="button" class="btn-call-large"
+              onclick="showToast('Ligando...', 'Discando para (11) 98765-4321...', 'fa-phone')">
               <i class="fa-solid fa-phone"></i>
               Ligar para Telefone de Emergência
             </button>
@@ -1136,12 +1241,14 @@
       </button>
 
       <div style="text-align: center;">
-        <div style="width: 52px; height: 52px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin: 0 auto 1rem;">
+        <div
+          style="width: 52px; height: 52px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin: 0 auto 1rem;">
           <i class="fa-solid fa-key"></i>
         </div>
         <h3 style="font-size: 1.35rem; margin-bottom: 0.4rem;">Código de Autorização Clínica</h3>
         <p style="font-size: 0.85rem; color: var(--text-secondary);">
-          Informe este código temporário ao Dr. Veterinário para autorizar o acesso ao prontuário de <strong id="otp-modal-pet-name" style="color: var(--teal-primary);">Paciente</strong>.
+          Informe este código temporário ao Dr. Veterinário para autorizar o acesso ao prontuário de <strong
+            id="otp-modal-pet-name" style="color: var(--teal-primary);">Paciente</strong>.
         </p>
 
         <!-- Live OTP Digits -->
@@ -1153,7 +1260,8 @@
           <div class="otp-timer-fill"></div>
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+        <div
+          style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.5rem;">
           <span>Expira em: <strong id="otp-seconds-left" style="color: var(--teal-primary);">58s</strong></span>
           <span>Acesso liberado por 2 horas</span>
         </div>
@@ -1203,7 +1311,8 @@
 
         <div class="form-group">
           <label class="form-label">Medicamento / Princípio Ativo</label>
-          <input type="text" id="input-verm-medicamento" class="form-input" placeholder="Ex: Simparic (Sarolaner 80mg) ou Drontal Plus" required>
+          <input type="text" id="input-verm-medicamento" class="form-input"
+            placeholder="Ex: Simparic (Sarolaner 80mg) ou Drontal Plus" required>
         </div>
 
         <div class="form-row-2">
@@ -1303,7 +1412,8 @@
         <div class="form-row-2">
           <div class="form-group">
             <label class="form-label">Medicamento / Princípio Ativo</label>
-            <input type="text" id="input-rx-nome" class="form-input" placeholder="Ex: Amoxicilina + Clavulanato 250mg" required>
+            <input type="text" id="input-rx-nome" class="form-input" placeholder="Ex: Amoxicilina + Clavulanato 250mg"
+              required>
           </div>
           <div class="form-group">
             <label class="form-label">Tipo de Tratamento</label>
@@ -1319,12 +1429,15 @@
 
         <div class="form-group">
           <label class="form-label">Indicação Clínica</label>
-          <input type="text" id="input-rx-indicacao" class="form-input" placeholder="Ex: Tratamento de infecção bacteriana secundária" required>
+          <input type="text" id="input-rx-indicacao" class="form-input"
+            placeholder="Ex: Tratamento de infecção bacteriana secundária" required>
         </div>
 
         <div class="form-group">
           <label class="form-label">Posologia & Instruções de Uso</label>
-          <textarea id="input-rx-posologia" class="form-textarea" style="height: 80px;" placeholder="Ex: Administrar 1 comprimido a cada 12 horas por 10 dias seguidos, junto à refeição." required></textarea>
+          <textarea id="input-rx-posologia" class="form-textarea" style="height: 80px;"
+            placeholder="Ex: Administrar 1 comprimido a cada 12 horas por 10 dias seguidos, junto à refeição."
+            required></textarea>
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 0.8rem; margin-top: 1.5rem;">
@@ -1360,7 +1473,8 @@
       <form id="form-modal-cirurgia" onsubmit="salvarModalCirurgia(event)">
         <div class="form-group">
           <label class="form-label">Procedimento Cirúrgico / Clínico</label>
-          <input type="text" id="input-cirurgia-nome" class="form-input" placeholder="Ex: Limpeza de Tártaro (Tartarectomia)" required>
+          <input type="text" id="input-cirurgia-nome" class="form-input"
+            placeholder="Ex: Limpeza de Tártaro (Tartarectomia)" required>
         </div>
 
         <div class="form-row-2">
@@ -1370,13 +1484,15 @@
           </div>
           <div class="form-group">
             <label class="form-label">Protocolo / Cirurgião</label>
-            <input type="text" id="input-cirurgia-cirurgiao" class="form-input" placeholder="Ex: Dr. Ricardo (CRMV-SP 38.412)" required>
+            <input type="text" id="input-cirurgia-cirurgiao" class="form-input"
+              placeholder="Ex: Dr. Ricardo (CRMV-SP 38.412)" required>
           </div>
         </div>
 
         <div class="form-group">
           <label class="form-label">Orientações Pré-Operatórias (Visível ao Tutor)</label>
-          <textarea id="input-cirurgia-notas" class="form-textarea" style="height: 75px;" placeholder="Ex: Jejum alimentar de 8h e hídrico de 2h. Trazer exames pré-operatórios atualizados."></textarea>
+          <textarea id="input-cirurgia-notas" class="form-textarea" style="height: 75px;"
+            placeholder="Ex: Jejum alimentar de 8h e hídrico de 2h. Trazer exames pré-operatórios atualizados."></textarea>
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 0.8rem; margin-top: 1.5rem;">
@@ -1412,7 +1528,8 @@
       <form id="form-modal-exame" onsubmit="salvarModalExame(event)">
         <div class="form-group">
           <label class="form-label">Título do Exame</label>
-          <input type="text" id="input-exame-titulo" class="form-input" placeholder="Ex: Perfil Renal & Hepático Bioquímico" required>
+          <input type="text" id="input-exame-titulo" class="form-input"
+            placeholder="Ex: Perfil Renal & Hepático Bioquímico" required>
         </div>
 
         <div class="form-row-2">
@@ -1428,7 +1545,8 @@
 
         <div class="form-group">
           <label class="form-label">Resumo Clínico do Laudo</label>
-          <input type="text" id="input-exame-resumo" class="form-input" placeholder="Ex: Ureia 35 mg/dL, Creatinina 0.9 mg/dL. Função renal preservada." required>
+          <input type="text" id="input-exame-resumo" class="form-input"
+            placeholder="Ex: Ureia 35 mg/dL, Creatinina 0.9 mg/dL. Função renal preservada." required>
         </div>
 
         <div class="form-group">
@@ -1465,21 +1583,20 @@
         </span>
       </div>
 
-      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 1.2rem; font-size: 0.85rem; line-height: 1.6;">
-        <div><strong>Paciente:</strong> <span id="rx-print-pet-nome">Paciente</span> (<span id="rx-print-pet-raca">SRD</span>)</div>
+      <div
+        style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 1.2rem; font-size: 0.85rem; line-height: 1.6;">
+        <div><strong>Paciente:</strong> <span id="rx-print-pet-nome">Paciente</span> (<span
+            id="rx-print-pet-raca">SRD</span>)</div>
         <div><strong>Tutor(a):</strong> <span id="rx-print-tutor-nome">Tutor Responsável</span></div>
         <div><strong>Data de Emissão:</strong> <span id="rx-print-data">-</span></div>
       </div>
 
       <h4 style="font-size: 1rem; color: #0f172a; margin-bottom: 0.6rem;">Medicamentos Prescritos:</h4>
       <div id="rx-print-meds-list" style="font-size: 0.85rem; margin-bottom: 1.5rem;">
-        <div style="padding: 0.8rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 0.6rem;">
-          <strong>1. Apoquel 16mg (Maleato de Oclacitinib)</strong><br>
-          <span style="color: var(--text-secondary);">Tomar 1 comprimido por via oral a cada 24 horas após a refeição por 30 dias.</span>
-        </div>
-        <div style="padding: 0.8rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px;">
-          <strong>2. Xampu Clorexidina 3% + Miconazol 2%</strong><br>
-          <span style="color: var(--text-secondary);">Banho a cada 7 dias. Deixar a espuma agir por 10 minutos antes de enxaguar.</span>
+        <div
+          style="padding: 1.4rem; text-align: center; color: var(--text-muted); background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px;">
+          <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--teal-primary); font-size: 1.2rem; margin-bottom: 0.4rem; display: block;"></i>
+          Carregando prescrições ativas do paciente...
         </div>
       </div>
 
@@ -1508,7 +1625,8 @@
           Redefinir Senha de Acesso
         </h3>
         <p style="font-size: 0.86rem; color: var(--text-secondary); margin-top: 0.3rem; line-height: 1.5;">
-          Confirme sua identidade informando seu e-mail cadastrado e um dado do seu animal para redefinir sua senha com segurança criptográfica.
+          Confirme sua identidade informando seu e-mail cadastrado e um dado do seu animal para redefinir sua senha com
+          segurança criptográfica.
         </p>
       </div>
 
@@ -1525,7 +1643,8 @@
           <label class="form-label">Desafio de Identidade</label>
           <div class="input-with-icon">
             <i class="fa-solid fa-fingerprint"></i>
-            <input type="text" class="form-input" id="reset-desafio" placeholder="Telefone, Tag PST (ex: PST-1428) ou Nome do Pet" required>
+            <input type="text" class="form-input" id="reset-desafio"
+              placeholder="Telefone, Tag PST (ex: PST-1428) ou Nome do Pet" required>
           </div>
           <span style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.25rem; display: block;">
             * Aceita seu telefone de emergência cadastrado, a Tag do pet ou o nome do seu animal.
@@ -1537,14 +1656,16 @@
             <label class="form-label">Nova Senha</label>
             <div class="input-with-icon">
               <i class="fa-solid fa-lock"></i>
-              <input type="password" class="form-input" id="reset-nova-senha" placeholder="Mínimo 4 dígitos" minlength="4" required>
+              <input type="password" class="form-input" id="reset-nova-senha" placeholder="Mínimo 4 dígitos"
+                minlength="4" required>
             </div>
           </div>
           <div class="form-group">
             <label class="form-label">Confirmar Senha</label>
             <div class="input-with-icon">
               <i class="fa-solid fa-check-double"></i>
-              <input type="password" class="form-input" id="reset-confirma-senha" placeholder="Repita a senha" minlength="4" required>
+              <input type="password" class="form-input" id="reset-confirma-senha" placeholder="Repita a senha"
+                minlength="4" required>
             </div>
           </div>
         </div>
@@ -1587,4 +1708,5 @@
   <script src="js/pdf.js"></script>
   <script src="js/app.js"></script>
 </body>
+
 </html>

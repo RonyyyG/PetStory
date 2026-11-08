@@ -138,43 +138,87 @@ async function baixarCarteirinhaPdf() {
 }
 
 async function imprimirReceitaOficial() {
-  if (typeof fecharModalEmitirReceita === 'function') {
-    fecharModalEmitirReceita();
-  }
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
   const pacienteAtual = window.pacienteAtualProntuario;
   const petNome = pacienteAtual?.nome || session?.pet?.nome || 'Paciente';
   const tutorNome = pacienteAtual?.tutor_nome || session?.tutor?.nome || 'Tutor Responsável';
+  const petRaca = pacienteAtual?.raca || session?.pet?.raca || 'SRD';
 
   let petId = typeof resolverPetIdSupabase === 'function'
     ? resolverPetIdSupabase(pacienteAtual?.id || session?.pet?.id || pacienteAtual?.tag || session?.pet?.tag)
     : (pacienteAtual?.id || session?.pet?.id || '7e096a3b-0468-4347-9bee-a8286a10d416');
 
-  // Abre janela antecipadamente para evitar bloqueador de pop-ups
-  const win = window.open('', '_blank', 'width=750,height=850');
+  // 1. Lê os medicamentos diretamente do modal com as posologias ajustadas pelo médico
+  const containerMeds = document.getElementById('rx-print-meds-list');
+  const cards = containerMeds ? containerMeds.querySelectorAll('.rx-print-item-card') : [];
 
-  let prescricoesSalvas = [];
-  try {
-    const resp = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/prescricoes?pet_id=eq.${petId}&ativa=eq.true&order=created_at.desc`, {
-      headers: {
-        'apikey': SUPABASE_CONFIG.anonKey,
-        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+  let medicamentosParaImprimir = [];
+
+  if (cards.length > 0) {
+    cards.forEach(card => {
+      const checkbox = card.querySelector('.rx-print-checkbox');
+      if (!checkbox || checkbox.checked) {
+        let nome = card.querySelector('.rx-item-nome')?.textContent.trim() || 'Medicamento';
+        nome = nome.replace(/^\d+\.\s*/, '');
+        const tipo = card.querySelector('.rx-item-tipo')?.textContent.trim() || 'Uso Veterinário';
+        const indicacao = card.querySelector('.rx-item-indicacao-text')?.textContent.trim() || '';
+        const posologiaInput = card.querySelector('.rx-item-posologia');
+        const posologia = posologiaInput ? posologiaInput.value.trim() : 'Conforme orientação veterinária.';
+
+        medicamentosParaImprimir.push({
+          nome,
+          tipo,
+          indicacao,
+          posologia
+        });
       }
     });
-    if (resp.ok) {
-      prescricoesSalvas = await resp.json();
+  }
+
+  // 2. Se o modal não tiver cards ou se não houver selecionados, busca do Supabase como contingência
+  if (medicamentosParaImprimir.length === 0 && (!cards || cards.length === 0)) {
+    try {
+      const resp = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/prescricoes?pet_id=eq.${petId}&ativa=eq.true&order=created_at.desc`, {
+        headers: {
+          'apikey': SUPABASE_CONFIG.anonKey,
+          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+        }
+      });
+      if (resp.ok) {
+        const prescricoesSalvas = await resp.json();
+        if (prescricoesSalvas && prescricoesSalvas.length > 0) {
+          medicamentosParaImprimir = prescricoesSalvas.map(p => ({
+            nome: p.nome,
+            tipo: p.tipo || 'Uso Veterinário',
+            indicacao: p.indicacao || 'Avaliação clínica',
+            posologia: p.posologia || 'Conforme orientação veterinária'
+          }));
+        }
+      }
+    } catch (errRx) {
+      console.warn('[PetStory] Erro ao carregar prescrições do Supabase para o receituário:', errRx);
     }
-  } catch (errRx) {
-    console.warn('[PetStory] Erro ao carregar prescrições do Supabase para o receituário:', errRx);
+  }
+
+  // Fecha o modal de tela
+  if (typeof fecharModalEmitirReceita === 'function') {
+    fecharModalEmitirReceita();
+  }
+
+  // Abre janela para impressão oficial
+  const win = window.open('', '_blank', 'width=750,height=850');
+  if (!win) {
+    window.print();
+    return;
   }
 
   let htmlMedicamentos = '';
-  if (prescricoesSalvas.length > 0) {
-    htmlMedicamentos = prescricoesSalvas.map((p, idx) => `
+  if (medicamentosParaImprimir.length > 0) {
+    htmlMedicamentos = medicamentosParaImprimir.map((p, idx) => `
       <div class="med">
-        <strong>${idx + 1}. ${p.nome}</strong> (${p.tipo || 'Uso Veterinário'})<br>
-        <span style="font-size: 14px; color: #334155;"><strong>Indicação:</strong> ${p.indicacao || 'Avaliação clínica'}</span><br>
-        <span style="font-size: 14px; color: #334155;"><strong>Posologia:</strong> ${p.posologia || 'Conforme orientação veterinária'}</span>
+        <strong>${idx + 1}. ${p.nome}</strong> (${p.tipo})<br>
+        ${p.indicacao ? `<span style="font-size: 14px; color: #334155;"><strong>Indicação:</strong> ${p.indicacao}</span><br>` : ''}
+        <span style="font-size: 14px; color: #334155;"><strong>Posologia:</strong> ${p.posologia}</span>
       </div>
     `).join('');
   } else {
@@ -183,11 +227,6 @@ async function imprimirReceitaOficial() {
         Nenhum medicamento ativo prescrito para este paciente no momento.
       </div>
     `;
-  }
-
-  if (!win) {
-    window.print();
-    return;
   }
 
   win.document.write(`
@@ -213,16 +252,17 @@ async function imprimirReceitaOficial() {
       <div class="rx-page">
         <div class="hdr">
           <h2 style="color: #00735c; margin: 0;">🐾 Hospital Veterinário São Francisco</h2>
-          <div style="font-size: 13px; color: #64748b;">Dr. Ricardo Mendonça • CRMV-SP 38.412</div>
+          <div style="font-size: 13px; color: #64748b; margin-top: 4px;">Dr. Ricardo Mendonça • CRMV-SP 38.412 • Clínico Geral & Cirurgião</div>
+          <div style="font-size: 12px; color: #94a3b8;">Documento Médico Oficial • Identificação Integrada PetStory Tag</div>
         </div>
 
         <div class="patient">
-          <div><strong>Paciente:</strong> ${petNome}</div>
+          <div><strong>Paciente:</strong> ${petNome} (${petRaca})</div>
           <div><strong>Tutor(a):</strong> ${tutorNome}</div>
           <div><strong>Data da Prescrição:</strong> ${new Date().toLocaleDateString('pt-BR')}</div>
         </div>
 
-        <h3 style="margin-bottom: 15px;">Prescrição Farmacológica:</h3>
+        <h3 style="margin-bottom: 15px; color: #0f172a;">Prescrição Farmacológica:</h3>
         
         ${htmlMedicamentos}
 

@@ -40,6 +40,7 @@ public class SupabaseRestClient {
 
     // Cache local em memória para persistência rápida e resiliência offline
     private final Map<String, JsonObject> cacheOtps = new ConcurrentHashMap<>();
+    private final Map<String, JsonObject> cacheTutores = new ConcurrentHashMap<>();
 
     public SupabaseRestClient() {
         this(SupabaseConfig.SUPABASE_URL, SupabaseConfig.SUPABASE_ANON_KEY);
@@ -63,6 +64,8 @@ public class SupabaseRestClient {
             return null;
         }
         String emailNorm = email.trim().toLowerCase();
+
+        // 1. Tenta consulta ao banco relacional Supabase
         try {
             String url = SupabaseConfig.obterEndpointTabela("tutores") 
                     + "?email=eq." + URLEncoder.encode(emailNorm, StandardCharsets.UTF_8)
@@ -81,14 +84,24 @@ public class SupabaseRestClient {
             if (response.statusCode() == 200) {
                 JsonArray array = JsonParser.parseString(response.body()).getAsJsonArray();
                 if (!array.isEmpty()) {
-                    return array.get(0).getAsJsonObject();
+                    JsonObject tutorEncontrado = array.get(0).getAsJsonObject();
+                    cacheTutores.put(emailNorm, tutorEncontrado);
+                    if (tutorEncontrado.has("id")) {
+                        cacheTutores.put(tutorEncontrado.get("id").getAsString(), tutorEncontrado);
+                    }
+                    return tutorEncontrado;
                 }
             }
         } catch (Exception e) {
             System.err.println("[SupabaseClient] Aviso ao buscar tutor por e-mail no Supabase: " + e.getMessage());
         }
 
-        // Fallback resiliente para tutores padrão
+        // 2. Consulta no cache em memória
+        if (cacheTutores.containsKey(emailNorm)) {
+            return cacheTutores.get(emailNorm);
+        }
+
+        // 3. Fallback resiliente para tutores padrão de demonstração
         if (emailNorm.contains("mariana")) {
             JsonObject m = new JsonObject();
             m.addProperty("id", "1d41b141-75a1-4ea8-b398-4c5ff5ece979");
@@ -96,6 +109,9 @@ public class SupabaseRestClient {
             m.addProperty("email", "mariana@email.com");
             m.addProperty("telefone_emergencia", "(11) 98765-4321");
             m.addProperty("cidade", "São Paulo - SP");
+            m.addProperty("senha_hash", br.com.petstory.service.AuthService.gerarHashSenha("senha123"));
+            cacheTutores.put("mariana@email.com", m);
+            cacheTutores.put(m.get("id").getAsString(), m);
             return m;
         } else if (emailNorm.contains("rafael")) {
             JsonObject r = new JsonObject();
@@ -104,6 +120,9 @@ public class SupabaseRestClient {
             r.addProperty("email", "rafael.teste@example.com");
             r.addProperty("telefone_emergencia", "(00) 90000-1234");
             r.addProperty("cidade", "Caruaru - PE");
+            r.addProperty("senha_hash", br.com.petstory.service.AuthService.gerarHashSenha("123456"));
+            cacheTutores.put("rafael.teste@example.com", r);
+            cacheTutores.put(r.get("id").getAsString(), r);
             return r;
         }
 
@@ -559,6 +578,52 @@ public class SupabaseRestClient {
             JsonObject c = cacheOtps.get(petId);
             if (c.has("id") && c.get("id").getAsString().equals(otpId)) {
                 c.addProperty("usado", true);
+            }
+        }
+
+        return atualizado;
+    }
+
+    /**
+     * Atualiza o hash criptográfico seguro da senha do tutor no Supabase.
+     */
+    public boolean atualizarSenhaHashTutor(String tutorId, String senhaHash) {
+        if (tutorId == null || tutorId.trim().isEmpty() || senhaHash == null) {
+            return false;
+        }
+
+        boolean atualizado = false;
+        try {
+            String url = SupabaseConfig.obterEndpointTabela("tutores")
+                    + "?id=eq." + URLEncoder.encode(tutorId.trim(), StandardCharsets.UTF_8);
+
+            JsonObject patchBody = new JsonObject();
+            patchBody.addProperty("senha_hash", senhaHash);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(6))
+                    .header("apikey", apiKey)
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Content-Type", "application/json")
+                    .method("PATCH", HttpRequest.BodyPublishers.ofString(patchBody.toString(), StandardCharsets.UTF_8))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            atualizado = (response.statusCode() == 200 || response.statusCode() == 204);
+        } catch (Exception e) {
+            System.err.println("[SupabaseClient] Aviso ao atualizar senha_hash no Supabase: " + e.getMessage());
+        }
+
+        // Atualiza cache em memória para resiliência acadêmica
+        if (cacheTutores.containsKey(tutorId)) {
+            cacheTutores.get(tutorId).addProperty("senha_hash", senhaHash);
+            atualizado = true;
+        }
+        for (JsonObject tutor : cacheTutores.values()) {
+            if (tutor.has("id") && tutor.get("id").getAsString().equals(tutorId)) {
+                tutor.addProperty("senha_hash", senhaHash);
+                atualizado = true;
             }
         }
 

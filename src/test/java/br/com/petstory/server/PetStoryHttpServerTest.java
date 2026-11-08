@@ -5,7 +5,10 @@ import com.google.gson.JsonParser;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 
 import java.io.IOException;
 import java.net.URI;
@@ -23,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Valida a inicialização do servidor HTTP nativo, o suporte a CORS,
  * e os novos endpoints de autenticação e OTP.
  */
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class PetStoryHttpServerTest {
 
     private static final int PORTA_TESTE = 8089;
@@ -339,5 +343,74 @@ public class PetStoryHttpServerTest {
         JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
         assertTrue(json.get("sucesso").getAsBoolean());
         assertEquals("Simparic 20mg (Sarolaner)", json.getAsJsonObject("prescricao").get("nome").getAsString());
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/redefinir-senha deve redefinir senha com desafio de identidade correto")
+    public void testRedefinirSenhaComDesafioCorreto() throws Exception {
+        JsonObject body = new JsonObject();
+        body.addProperty("email", "rafael.teste@example.com");
+        body.addProperty("desafioIdentidade", "Bolinha");
+        body.addProperty("novaSenha", "rafael2026");
+
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/auth/redefinir-senha"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body.toString(), StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, resp.statusCode());
+
+        JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
+        assertTrue(json.get("sucesso").getAsBoolean());
+
+        // Valida que agora o login funciona com a nova senha
+        JsonObject loginBody = new JsonObject();
+        loginBody.addProperty("email", "rafael.teste@example.com");
+        loginBody.addProperty("senha", "rafael2026");
+
+        HttpRequest loginReq = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/auth/login-tutor"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(loginBody.toString(), StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> loginResp = client.send(loginReq, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, loginResp.statusCode());
+
+        // Restaura a senha padrão de Rafael para testes subsequentes
+        JsonObject restoreBody = new JsonObject();
+        restoreBody.addProperty("email", "rafael.teste@example.com");
+        restoreBody.addProperty("desafioIdentidade", "PST-1428");
+        restoreBody.addProperty("novaSenha", "123456");
+
+        HttpRequest restoreReq = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/auth/redefinir-senha"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(restoreBody.toString(), StandardCharsets.UTF_8))
+                .build();
+        client.send(restoreReq, HttpResponse.BodyHandlers.ofString());
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/redefinir-senha deve rejeitar com desafio de identidade incorreto")
+    public void testRedefinirSenhaComDesafioIncorreto() throws Exception {
+        JsonObject body = new JsonObject();
+        body.addProperty("email", "mariana@email.com");
+        body.addProperty("desafioIdentidade", "PetIncorreto123");
+        body.addProperty("novaSenha", "novaSenha2026");
+
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/auth/redefinir-senha"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body.toString(), StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+        assertEquals(401, resp.statusCode());
+
+        JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
+        assertFalse(json.get("sucesso").getAsBoolean());
     }
 }

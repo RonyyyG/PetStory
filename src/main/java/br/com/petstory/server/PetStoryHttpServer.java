@@ -71,6 +71,7 @@ public class PetStoryHttpServer {
         server.createContext("/api/health", new HealthHandler());
         server.createContext("/api/auth/login-tutor", new AuthTutorHandler(authService));
         server.createContext("/api/auth/login-vet", new AuthVetHandler(authService));
+        server.createContext("/api/auth/redefinir-senha", new RedefinirSenhaHandler(authService));
         server.createContext("/api/otp/gerar", new OtpGerarHandler(otpService));
         server.createContext("/api/otp/validar", new OtpValidarHandler(otpService));
 
@@ -92,6 +93,7 @@ public class PetStoryHttpServer {
         System.out.println(" Health Check:          http://localhost:" + porta + "/api/health");
         System.out.println(" Login Tutor:           http://localhost:" + porta + "/api/auth/login-tutor");
         System.out.println(" Login Veterinário:     http://localhost:" + porta + "/api/auth/login-vet");
+        System.out.println(" Redefinição de Senha:  http://localhost:" + porta + "/api/auth/redefinir-senha");
         System.out.println(" Gerador de OTP:        http://localhost:" + porta + "/api/otp/gerar");
         System.out.println(" Validador de OTP:      http://localhost:" + porta + "/api/otp/validar");
         System.out.println(" Prontuário Clínico:    http://localhost:" + porta + "/api/pets/{id}/prontuario");

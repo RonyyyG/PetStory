@@ -403,7 +403,7 @@
             <h3 style="font-size: 1.25rem; display: flex; align-items: center; gap: 0.6rem;">
               <i class="fa-solid fa-qrcode" style="color: var(--teal-primary);"></i> Leitor de Tag Inteligente
             </h3>
-            <span class="badge-status badge-success">
+            <span class="badge-status badge-success" id="vet-scanner-status-badge">
               <i class="fa-solid fa-wifi"></i> NFC & Câmera Prontos
             </span>
           </div>
@@ -415,17 +415,27 @@
               <span class="frame-corner-bl"></span>
               <div class="laser-line"></div>
 
+              <!-- Container de Vídeo da Câmera Real (Webcam / Smartphone) -->
+              <div id="qr-camera-stream" style="display: none; width: 100%; height: 100%; border-radius: 12px; overflow: hidden;"></div>
+
               <!-- Clean SVG QR Code Representation -->
-              <svg class="qr-preview-asset" viewBox="0 0 100 100" fill="currentColor">
+              <svg class="qr-preview-asset" id="qr-preview-static" viewBox="0 0 100 100" fill="currentColor">
                 <path fill="#00d2ad"
                   d="M10 10h30v30h-30z M16 16h18v18h-18z M22 22h6v6h-6z M60 10h30v30h-30z M66 16h18v18h-18z M72 22h6v6h-6z M10 60h30v30h-30z M16 66h18v18h-18z M22 72h6v6h-6z M45 15h10v6h-10z M45 28h10v10h-10z M45 45h10v10h-10z M60 45h6v10h-6z M72 45h18v6h-18z M15 45h10v10h-10z M28 45h10v6h-10z M60 60h6v10h-6z M72 60h8v8h-8z M84 60h6v18h-6z M60 76h14v14h-14z M80 84h10v6h-10z" />
               </svg>
             </div>
 
-            <p class="scanner-hint-text">
+            <p class="scanner-hint-text" id="scanner-hint-text">
               <i class="fa-solid fa-arrows-to-eye" style="color: var(--teal-primary);"></i>
               Posicione a medalha PetStory no visor ou aproxime via sensor NFC
             </p>
+          </div>
+
+          <!-- Botão de Ativação da Câmera Real -->
+          <div style="display: flex; justify-content: center; margin: 1.2rem 0;">
+            <button type="button" class="btn-primary" id="btn-toggle-camera" onclick="toggleLeitorCamera()" style="display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.8rem 1.8rem; font-size: 0.95rem;">
+              <i class="fa-solid fa-camera"></i> <span>Ativar Câmera para Escanear</span>
+            </button>
           </div>
 
           <div class="input-divider">
@@ -1670,6 +1680,8 @@
 
   <!-- Local Standalone QR Code Generator (Works offline and bypasses ad-blockers) -->
   <script src="js/qrcode.min.js"></script>
+  <!-- HTML5 QR Code Scanner Library (Supports Webcam & Mobile Cameras) -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <!-- Modular Scripts -->
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>

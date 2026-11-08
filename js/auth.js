@@ -31,6 +31,9 @@ function obterSessaoVet() {
 }
 
 function encerrarSessaoVet() {
+  if (typeof pararLeitorCamera === 'function') {
+    pararLeitorCamera();
+  }
   sessionStorage.removeItem('petstory_vet_session');
   sessionStorage.removeItem('petstory_clinical_auth');
   showToast('Plantão Encerrado', 'Sessão do médico-veterinário finalizada. Retornando ao login.', 'fa-right-from-bracket', 'info');
@@ -205,6 +208,9 @@ async function restaurarSessaoSalva() {
 }
 
 function encerrarSessaoTutor() {
+  if (typeof pararLeitorCamera === 'function') {
+    pararLeitorCamera();
+  }
   sessionStorage.removeItem('petstory_current_user');
   try { localStorage.removeItem('petstory_current_user'); } catch (e) {}
   if (window.pacienteAtualProntuario) {
@@ -226,6 +232,11 @@ function initScreenNavigation() {
 }
 
 function switchScreen(screenKey) {
+  // Desliga preventivamente o leitor de câmera ao alternar de tela
+  if (typeof pararLeitorCamera === 'function') {
+    pararLeitorCamera();
+  }
+
   // 1. Blindagem Rigorosa de Rotas (Route Guards)
   const permissao = verificarPermissaoRota(screenKey);
   if (!permissao.permitida) {

@@ -260,6 +260,249 @@ function atualizarCredencialVetScanner() {
 }
 
 // ============================================================================
+// LEITOR REAL DE CÂMERA (WEBCAM / SMARTPHONE) VIA HTML5-QRCODE
+// ============================================================================
+let leitorCameraInstance = null;
+let cameraAtiva = false;
+let cameraIniciando = false;
+
+function tocarBeepConfirmacao() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    // Começa em 880Hz (Lá) e sobe para 1760Hz em 0.15s (bip eletrônico nítido de confirmação)
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.12);
+
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+
+    setTimeout(() => {
+      ctx.close().catch(() => {});
+    }, 250);
+  } catch (e) {
+    console.warn('Web Audio API não suportada ou silenciada:', e);
+  }
+}
+
+function toggleLeitorCamera() {
+  if (cameraAtiva) {
+    pararLeitorCamera();
+  } else {
+    iniciarLeitorCamera();
+  }
+}
+
+async function iniciarLeitorCamera() {
+  if (cameraAtiva || cameraIniciando) return;
+
+  if (typeof Html5Qrcode === 'undefined') {
+    showToast('Biblioteca Indisponível', 'O leitor de câmera ainda está carregando ou não pôde ser iniciado.', 'fa-triangle-exclamation', 'warning');
+    return;
+  }
+
+  const streamContainer = document.getElementById('qr-camera-stream');
+  const staticSvg = document.getElementById('qr-preview-static');
+  const btnToggle = document.getElementById('btn-toggle-camera');
+  const statusBadge = document.getElementById('vet-scanner-status-badge');
+  const hintText = document.getElementById('scanner-hint-text');
+
+  cameraIniciando = true;
+
+  try {
+    if (staticSvg) staticSvg.style.display = 'none';
+    if (streamContainer) {
+      streamContainer.style.display = 'block';
+      streamContainer.innerHTML = '';
+    }
+
+    if (btnToggle) {
+      btnToggle.className = 'btn-secondary';
+      btnToggle.innerHTML = '<i class="fa-solid fa-stop"></i> <span>Desativar Câmera</span>';
+    }
+
+    if (statusBadge) {
+      statusBadge.className = 'badge-status badge-warning';
+      statusBadge.innerHTML = '<i class="fa-solid fa-camera"></i> Câmera Ativa • Aponte para a Medalha';
+    }
+
+    if (hintText) {
+      hintText.innerHTML = '<i class="fa-solid fa-arrows-to-eye" style="color: var(--teal-primary);"></i> Aponte a câmera para o QR Code da medalha ou tela do celular';
+    }
+
+    if (!leitorCameraInstance) {
+      leitorCameraInstance = new Html5Qrcode("qr-camera-stream");
+    }
+
+    const config = {
+      fps: 15,
+      qrbox: { width: 180, height: 180 }
+    };
+
+    const qrSuccessCallback = (decodedText) => {
+      processarQrCodeEscaneado(decodedText);
+    };
+
+    const qrErrorCallback = () => {
+      // frames contínuos sem detecção
+    };
+
+    try {
+      // Prioriza câmera traseira em smartphones ("environment") ou webcam no PC
+      await leitorCameraInstance.start(
+        { facingMode: "environment" },
+        config,
+        qrSuccessCallback,
+        qrErrorCallback
+      );
+    } catch (camErr) {
+      console.warn('Tentativa inicial com facingMode environment falhou, buscando dispositivos:', camErr);
+      const devices = await Html5Qrcode.getCameras().catch(() => []);
+      if (devices && devices.length > 0) {
+        await leitorCameraInstance.start(
+          devices[0].id,
+          config,
+          qrSuccessCallback,
+          qrErrorCallback
+        );
+      } else {
+        throw camErr;
+      }
+    }
+
+    cameraAtiva = true;
+    cameraIniciando = false;
+
+    showToast('Câmera Ativada', 'Aponte para o QR Code da medalha ou tela do smartphone.', 'fa-camera', 'info');
+
+  } catch (err) {
+    console.warn('Erro ao inicializar câmera:', err);
+    cameraAtiva = false;
+    cameraIniciando = false;
+    await pararLeitorCamera();
+
+    let msg = 'Não foi possível acessar a câmera. Verifique a permissão no navegador ou utilize a digitação manual.';
+    if (err && (err.name === 'NotAllowedError' || String(err).toLowerCase().includes('permission') || String(err).toLowerCase().includes('denied'))) {
+      msg = 'Permissão de câmera negada. Habilite o acesso nas configurações do navegador ou utilize o campo manual.';
+    } else if (err && (err.name === 'NotFoundError' || String(err).toLowerCase().includes('found') || String(err).toLowerCase().includes('device'))) {
+      msg = 'Nenhuma câmera física detectada no dispositivo. Utilize a digitação manual da Tag.';
+    }
+
+    showToast('Acesso à Câmera', msg, 'fa-video-slash', 'warning');
+  }
+}
+
+async function pararLeitorCamera() {
+  cameraIniciando = false;
+  cameraAtiva = false;
+
+  const streamContainer = document.getElementById('qr-camera-stream');
+  const staticSvg = document.getElementById('qr-preview-static');
+  const btnToggle = document.getElementById('btn-toggle-camera');
+  const statusBadge = document.getElementById('vet-scanner-status-badge');
+  const hintText = document.getElementById('scanner-hint-text');
+
+  if (leitorCameraInstance) {
+    try {
+      if (leitorCameraInstance.isScanning) {
+        await leitorCameraInstance.stop();
+      }
+      await leitorCameraInstance.clear();
+    } catch (e) {
+      console.warn('Erro ao finalizar Html5Qrcode:', e);
+    }
+    leitorCameraInstance = null;
+  }
+
+  // Libera os canais de hardware da webcam/smartphone
+  if (streamContainer) {
+    const video = streamContainer.querySelector('video');
+    if (video && video.srcObject) {
+      try {
+        const stream = video.srcObject;
+        const tracks = stream.getTracks ? stream.getTracks() : [];
+        tracks.forEach(track => track.stop());
+        video.srcObject = null;
+      } catch (e) {}
+    }
+    streamContainer.innerHTML = '';
+    streamContainer.style.display = 'none';
+  }
+
+  if (staticSvg) staticSvg.style.display = 'block';
+
+  if (btnToggle) {
+    btnToggle.className = 'btn-primary';
+    btnToggle.innerHTML = '<i class="fa-solid fa-camera"></i> <span>Ativar Câmera para Escanear</span>';
+  }
+
+  if (statusBadge) {
+    statusBadge.className = 'badge-status badge-success';
+    statusBadge.innerHTML = '<i class="fa-solid fa-wifi"></i> NFC & Câmera Prontos';
+  }
+
+  if (hintText) {
+    hintText.innerHTML = '<i class="fa-solid fa-arrows-to-eye" style="color: var(--teal-primary);"></i> Posicione a medalha PetStory no visor ou aproxime via sensor NFC';
+  }
+}
+
+function processarQrCodeEscaneado(decodedText) {
+  if (!decodedText) return;
+
+  const match = decodedText.match(/PST-\d{4}/i);
+  if (!match) {
+    return;
+  }
+
+  const tagExtraida = match[0].toUpperCase();
+
+  // 1. Emite feedback sonoro imediato (bip eletrônico de 0.15s)
+  tocarBeepConfirmacao();
+
+  // 2. Preenche automaticamente o campo com a Tag extraída
+  const tagInput = document.getElementById('input-tag-code');
+  if (tagInput) {
+    tagInput.value = tagExtraida;
+  }
+
+  // 3. Desliga a câmera e apaga os sensores
+  pararLeitorCamera();
+
+  // 4. Move o foco do cursor para o campo de OTP
+  const otpInput = document.getElementById('input-vet-otp');
+  if (otpInput) {
+    otpInput.value = '';
+    otpInput.focus();
+  }
+
+  // 5. Exibe toast de sucesso
+  showToast(
+    'Medalha Identificada!',
+    `Medalha [${tagExtraida}] identificada pela câmera! Digite o OTP do tutor.`,
+    'fa-qrcode',
+    'success'
+  );
+}
+
+// Desativação preventiva da câmera caso a página seja recarregada ou fechada
+window.addEventListener('beforeunload', () => {
+  if (typeof pararLeitorCamera === 'function') {
+    pararLeitorCamera();
+  }
+});
+
+// ============================================================================
 // CARREGAMENTO DO PRONTUÁRIO MÉDICO
 // ============================================================================
 function initMedicalRecordTabs() {
@@ -1670,6 +1913,10 @@ window.resolverPetIdSupabase = resolverPetIdSupabase;
 window.validarAcessoClinicoVeterinario = validarAcessoClinicoVeterinario;
 window.initScannerSimulations = initScannerSimulations;
 window.atualizarCredencialVetScanner = atualizarCredencialVetScanner;
+window.toggleLeitorCamera = toggleLeitorCamera;
+window.iniciarLeitorCamera = iniciarLeitorCamera;
+window.pararLeitorCamera = pararLeitorCamera;
+window.tocarBeepConfirmacao = tocarBeepConfirmacao;
 window.initMedicalRecordTabs = initMedicalRecordTabs;
 window.carregarProntuarioPaciente = carregarProntuarioPaciente;
 window.carregarVacinasProntuario = carregarVacinasProntuario;

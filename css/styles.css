@@ -416,6 +416,34 @@ button, input, select, textarea {
   border-radius: 16px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
   border: 1px solid var(--border-glass);
+  overflow: hidden;
+}
+
+/* Container de Vídeo da Câmera Real (Webcam / Smartphone) */
+#qr-camera-stream {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0f172a;
+  z-index: 2;
+}
+
+#qr-camera-stream video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 14px;
+  display: block;
+}
+
+/* Oculta canvas e overlays gerados pelo html5-qrcode para preservar a mira nativa */
+#qr-camera-stream canvas,
+#qr-camera-stream img {
+  display: none !important;
 }
 
 /* Corner Reticles */
@@ -428,6 +456,7 @@ button, input, select, textarea {
   border-color: var(--teal-primary);
   border-style: solid;
   pointer-events: none;
+  z-index: 12;
 }
 
 .scanner-frame::before {
@@ -453,6 +482,8 @@ button, input, select, textarea {
   border-top: 3px solid var(--teal-primary);
   border-right: 3px solid var(--teal-primary);
   border-top-right-radius: 6px;
+  pointer-events: none;
+  z-index: 12;
 }
 
 .frame-corner-bl {
@@ -464,6 +495,8 @@ button, input, select, textarea {
   border-bottom: 3px solid var(--teal-primary);
   border-left: 3px solid var(--teal-primary);
   border-bottom-left-radius: 6px;
+  pointer-events: none;
+  z-index: 12;
 }
 
 .laser-line {
@@ -475,7 +508,8 @@ button, input, select, textarea {
   background: linear-gradient(90deg, transparent, var(--teal-primary), #0284c7, transparent);
   box-shadow: 0 0 10px var(--teal-primary);
   animation: scan-laser 2.4s infinite ease-in-out alternate;
-  z-index: 10;
+  z-index: 15;
+  pointer-events: none;
 }
 
 @keyframes scan-laser {

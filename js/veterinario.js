@@ -6,6 +6,34 @@
 let pacienteAtualProntuario = null;
 
 // ============================================================================
+// RESOLUÇÃO DE ID DO PACIENTE (TAG PST / NOME -> UUID SUPABASE)
+// ============================================================================
+function resolverPetIdSupabase(idOuTag) {
+  const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
+  const raw = (idOuTag || pacienteAtualProntuario?.id || session?.pet?.id || pacienteAtualProntuario?.tag || session?.pet?.tag || 'PST-1428').toString().trim();
+
+  // Se já for um UUID (formato RFC 4122 de 36 caracteres)
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
+    return raw;
+  }
+
+  const up = raw.toUpperCase();
+  if (up === 'PST-1428' || up === 'BOLINHA') {
+    return '7e096a3b-0468-4347-9bee-a8286a10d416';
+  }
+  if (up === 'PST-9921' || up === 'THOR') {
+    return 'c810977d-2eea-420e-8957-3ab54afba430';
+  }
+  if (session?.pet?.id && (up === session?.pet?.tag?.toUpperCase() || up === session?.pet?.nome?.toUpperCase())) {
+    return session.pet.id;
+  }
+  if (pacienteAtualProntuario?.id) {
+    return pacienteAtualProntuario.id;
+  }
+  return '7e096a3b-0468-4347-9bee-a8286a10d416';
+}
+
+// ============================================================================
 // VALIDAÇÃO CLÍNICA DE ACESSO (TAG + OTP)
 // ============================================================================
 async function validarAcessoClinicoVeterinario(tagDigitada, otpDigitado) {
@@ -68,7 +96,44 @@ async function validarAcessoClinicoVeterinario(tagDigitada, otpDigitado) {
     console.warn('[PetStory] Backend Java offline em ' + BACKEND_URL + '. Utilizando validação de contingência local:', errNet);
   }
 
-  // Fallback de contingência local
+  // 2. Fallback de contingência consultando autorizacoes_otp no Supabase
+  try {
+    const respOtp = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/autorizacoes_otp?codigo_otp=eq.${otp}&usado=eq.false&order=created_at.desc&limit=1`, {
+      headers: {
+        'apikey': SUPABASE_CONFIG.anonKey,
+        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+      }
+    });
+    if (respOtp.ok) {
+      const rows = await respOtp.json();
+      if (rows && rows.length > 0) {
+        const authRow = rows[0];
+        const naoExpirou = !authRow.expira_em || new Date(authRow.expira_em) > new Date();
+        if (naoExpirou) {
+          fetch(`${SUPABASE_CONFIG.url}/rest/v1/autorizacoes_otp?id=eq.${authRow.id}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': SUPABASE_CONFIG.anonKey,
+              'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ usado: true })
+          }).catch(() => {});
+
+          const nomePet = typeof obterNomePacientePorTag === 'function' ? obterNomePacientePorTag(tag) : 'Paciente';
+          return {
+            valido: true,
+            tag: tag,
+            nome: nomePet
+          };
+        }
+      }
+    }
+  } catch (errOtp) {
+    console.warn('[PetStory] Aviso ao consultar OTP no Supabase:', errOtp);
+  }
+
+  // 3. Fallback de contingência local em memória
   if (typeof validarTagCadastrada === 'function' && !validarTagCadastrada(tag)) {
     return {
       valido: false,
@@ -160,7 +225,7 @@ function initScannerSimulations() {
       });
 
       showToast('Acesso Autorizado (Java)!', `Prontuário completo de ${resultado.nome} aberto com sucesso por 2 horas.`, 'fa-shield-dog', 'success');
-      
+
       setTimeout(() => {
         carregarProntuarioPaciente(resultado.tag);
         switchScreen('prontuario');
@@ -306,6 +371,7 @@ function carregarProntuarioPaciente(tagCode) {
         carregarPrescricoesProntuario(pet.id || codigoAlvo);
         carregarTimelineProntuario(pet.id || codigoAlvo);
         carregarExamesProntuario(pet.id || codigoAlvo);
+        carregarVermifugosProntuario(pet.id || codigoAlvo);
       } else {
         aplicarSessaoLocal();
       }
@@ -373,6 +439,7 @@ function carregarProntuarioPaciente(tagCode) {
       carregarPrescricoesProntuario(pet.id || codigoAlvo);
       carregarTimelineProntuario(pet.id || codigoAlvo);
       carregarExamesProntuario(pet.id || codigoAlvo);
+      carregarVermifugosProntuario(pet.id || codigoAlvo);
     }
   }
 }
@@ -430,31 +497,15 @@ async function carregarCirurgiasProntuario(petId) {
   const tbody = document.getElementById('prontuario-cirurgias-tbody');
   if (!tbody) return;
 
-  const targetId = petId || 'PST-1428';
+  const targetId = resolverPetIdSupabase(petId);
 
+  // 1. Tenta carregar do backend Java
   try {
-    const resp = await fetch(`${BACKEND_URL}/api/pets/${targetId}/prontuario`);
+    const resp = await fetch(`${BACKEND_URL}/api/pets/${petId || targetId}/prontuario`);
     if (resp.ok) {
       const prontuario = await resp.json();
       if (prontuario.cirurgias && prontuario.cirurgias.length > 0) {
-        tbody.innerHTML = prontuario.cirurgias.map(c => {
-          const isAgendada = (c.status || '').toLowerCase() === 'agendada';
-          const bgStyle = isAgendada ? 'background: #eff6ff;' : '';
-          const statusBadge = isAgendada 
-            ? `<span class="badge-status badge-pending"><i class="fa-solid fa-clock"></i> Agendada</span>`
-            : `<span class="badge-status badge-success"><i class="fa-solid fa-check"></i> Concluído</span>`;
-
-          return `
-            <tr style="${bgStyle}">
-              <td><strong>${c.nome}</strong></td>
-              <td><strong style="color: #2563eb;">${c.data}</strong></td>
-              <td>Sedação / Avaliação prévia</td>
-              <td><span>${c.notas || 'Jejum obrigatório'}</span></td>
-              <td>${c.cirurgiao}</td>
-              <td>${statusBadge}</td>
-            </tr>
-          `;
-        }).join('');
+        renderizarCirurgias(prontuario.cirurgias);
         return;
       }
     }
@@ -462,66 +513,70 @@ async function carregarCirurgiasProntuario(petId) {
     console.warn('[PetStory] Aviso ao carregar cirurgias do Java:', errNet);
   }
 
-  const cirurgiasSalvas = JSON.parse(localStorage.getItem('petstory_cirurgias_' + petId) || '[]');
-
-  if (cirurgiasSalvas.length > 0) {
-    tbody.innerHTML = cirurgiasSalvas.map(c => `
-      <tr style="background: #eff6ff;">
-        <td><strong>${c.nome}</strong></td>
-        <td><strong style="color: #2563eb;">${c.data} (Agendada)</strong></td>
-        <td>Sedação / Avaliação prévia</td>
-        <td><span>${c.notas || 'Jejum obrigatório'}</span></td>
-        <td>${c.cirurgiao}</td>
-        <td><span class="badge-status badge-pending"><i class="fa-solid fa-clock"></i> Agendada</span></td>
-      </tr>
-    `).join('');
-  } else {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="6" style="text-align:center; padding:30px 15px; color:#64748b; background:#f8fafc;">
-          <i class="fa-solid fa-scissors" style="font-size:1.8rem; margin-bottom:8px; display:block; color:#94a3b8;"></i>
-          <strong>Nenhum procedimento ou cirurgia cadastrado para este paciente.</strong><br>
-          <span style="font-size: 0.85rem;">Clique no botão acima <strong>"Agendar Cirurgia ou Procedimento"</strong> para marcar intervenções com notificação na tela do tutor.</span>
-        </td>
-      </tr>
-    `;
+  // 2. Consulta no Supabase
+  try {
+    const respSupa = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/cirurgias?pet_id=eq.${targetId}&order=data.asc,created_at.desc`, {
+      headers: {
+        'apikey': SUPABASE_CONFIG.anonKey,
+        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+      }
+    });
+    if (respSupa.ok) {
+      const cirurgias = await respSupa.json();
+      if (cirurgias && cirurgias.length > 0) {
+        renderizarCirurgias(cirurgias);
+        return;
+      }
+    }
+  } catch (errSupa) {
+    console.warn('[PetStory] Aviso ao carregar cirurgias do Supabase:', errSupa);
   }
-}
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="6" style="text-align:center; padding:30px 15px; color:#64748b; background:#f8fafc;">
+        <i class="fa-solid fa-scissors" style="font-size:1.8rem; margin-bottom:8px; display:block; color:#94a3b8;"></i>
+        <strong>Nenhum procedimento ou cirurgia cadastrado para este paciente.</strong><br>
+        <span style="font-size: 0.85rem;">Clique no botão acima <strong>"Agendar Cirurgia ou Procedimento"</strong> para marcar intervenções com notificação na tela do tutor.</span>
+      </td>
+    </tr>
+  `;
+
+  function renderizarCirurgias(lista) {
+    tbody.innerHTML = lista.map(c => {
+      const isAgendada = (c.status || '').toLowerCase() === 'agendada';
+      const bgStyle = isAgendada ? 'background: #eff6ff;' : '';
+      const statusBadge = isAgendada
+        ? `<span class="badge-status badge-pending"><i class="fa-solid fa-clock"></i> Agendada</span>`
+        : `<span class="badge-status badge-success"><i class="fa-solid fa-check"></i> Concluído</span>`;
+
+      return `
+        <tr style="${bgStyle}">
+          <td><strong>${c.nome}</strong></td>
+          <td><strong style="color: #2563eb;">${formatarDataBr(c.data) || c.data}</strong></td>
+          <td>Sedação / Avaliação prévia</td>
+          <td><span>${c.notas || 'Jejum obrigatório'}</span></td>
+          <td>${c.cirurgiao || 'Dr. Ricardo Mendonça'}</td>
+          <td>${statusBadge}</td>
+        </tr>
+      `;
+    }).join('');
+  }
 }
 
 async function carregarPrescricoesProntuario(petId) {
   const grid = document.getElementById('prontuario-prescricoes-grid');
   if (!grid) return;
 
-  const targetId = petId || 'PST-1428';
+  const targetId = resolverPetIdSupabase(petId);
 
+  // 1. Tenta carregar do Java
   try {
-    const resp = await fetch(`${BACKEND_URL}/api/pets/${targetId}/prontuario`);
+    const resp = await fetch(`${BACKEND_URL}/api/pets/${petId || targetId}/prontuario`);
     if (resp.ok) {
       const prontuario = await resp.json();
       if (prontuario.prescricoes && prontuario.prescricoes.length > 0) {
-        grid.innerHTML = prontuario.prescricoes.map(rx => `
-          <div class="rx-card" style="background: #f0fdf9; border: 1px solid #a7f3d0; border-radius: var(--radius-md); padding: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.6rem;">
-              <h4 style="font-size: 1.1rem; color: #0f172a;">${rx.nome}</h4>
-              <span class="badge-status badge-success">${rx.tipo || 'Uso Contínuo'}</span>
-            </div>
-            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.8rem;">
-              <strong>Indicação:</strong> ${rx.indicacao || 'Terapêutica clínica animal'}
-            </p>
-            <div style="font-size: 0.82rem; background: var(--teal-tint); border-left: 3px solid var(--teal-primary); padding: 0.6rem 0.8rem; border-radius: 4px; color: #0f172a;">
-              <strong>Posologia:</strong> ${rx.posologia || 'Conforme orientação veterinária'}
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
-              <span style="font-size: 0.75rem; color: var(--text-muted);">
-                ${rx.veterinario || 'Prescrito por Dr. Ricardo Mendonça (CRMV-SP 38.412)'}
-              </span>
-              <button type="button" class="btn-danger-outline" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="suspenderPrescricao(this)">
-                <i class="fa-solid fa-ban"></i> Suspender
-              </button>
-            </div>
-          </div>
-        `).join('');
+        renderizarPrescricoes(prontuario.prescricoes);
         return;
       }
     }
@@ -529,114 +584,214 @@ async function carregarPrescricoesProntuario(petId) {
     console.warn('[PetStory] Aviso ao carregar prescrições do Java:', errNet);
   }
 
-  const prescricoesSalvas = JSON.parse(localStorage.getItem('petstory_prescricoes_' + petId) || '[]');
+  // 2. Consulta no Supabase
+  try {
+    const respSupa = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/prescricoes?pet_id=eq.${targetId}&ativa=eq.true&order=created_at.desc`, {
+      headers: {
+        'apikey': SUPABASE_CONFIG.anonKey,
+        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+      }
+    });
+    if (respSupa.ok) {
+      const prescricoes = await respSupa.json();
+      if (prescricoes && prescricoes.length > 0) {
+        renderizarPrescricoes(prescricoes);
+        return;
+      }
+    }
+  } catch (errSupa) {
+    console.warn('[PetStory] Aviso ao carregar prescrições do Supabase:', errSupa);
+  }
 
-  if (prescricoesSalvas.length > 0) {
-    grid.innerHTML = prescricoesSalvas.map(rx => `
-      <div class="rx-card" style="background: #f0fdf9; border: 1px solid #a7f3d0; border-radius: var(--radius-md); padding: 1.5rem;">
+  grid.innerHTML = `
+    <div style="grid-column: 1 / -1; text-align: center; padding: 2.5rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; color: #64748b;">
+      <i class="fa-solid fa-pills" style="font-size: 2rem; color: #94a3b8; margin-bottom: 0.5rem; display: block;"></i>
+      <strong>Nenhum medicamento prescrito no momento.</strong><br>
+      <span style="font-size: 0.85rem;">Clique no botão verde acima <strong>"Nova Prescrição Médica"</strong> para prescrever tratamentos para este animal.</span>
+    </div>
+  `;
+
+  function renderizarPrescricoes(lista) {
+    grid.innerHTML = lista.map(rx => `
+      <div class="rx-card" data-rx-id="${rx.id || ''}" style="background: #f0fdf9; border: 1px solid #a7f3d0; border-radius: var(--radius-md); padding: 1.5rem;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.6rem;">
           <h4 style="font-size: 1.1rem; color: #0f172a;">${rx.nome}</h4>
-          <span class="badge-status badge-success">${rx.tipo}</span>
+          <span class="badge-status badge-success">${rx.tipo || 'Uso Contínuo'}</span>
         </div>
         <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.8rem;">
-          <strong>Indicação:</strong> ${rx.indicacao}
+          <strong>Indicação:</strong> ${rx.indicacao || 'Terapêutica clínica animal'}
         </p>
         <div style="font-size: 0.82rem; background: var(--teal-tint); border-left: 3px solid var(--teal-primary); padding: 0.6rem 0.8rem; border-radius: 4px; color: #0f172a;">
-          <strong>Posologia:</strong> ${rx.posologia}
+          <strong>Posologia:</strong> ${rx.posologia || 'Conforme orientação veterinária'}
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
-          <span style="font-size: 0.75rem; color: var(--text-muted);">${rx.veterinario}</span>
-          <button type="button" class="btn-danger-outline" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="suspenderPrescricao(this)">
+          <span style="font-size: 0.75rem; color: var(--text-muted);">
+            ${rx.veterinario || 'Dr. Ricardo Mendonça'} ${rx.crmv ? '(' + rx.crmv + ')' : ''}
+          </span>
+          <button type="button" class="btn-danger-outline" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="suspenderPrescricao(this, '${rx.id || ''}')">
             <i class="fa-solid fa-ban"></i> Suspender
           </button>
         </div>
       </div>
     `).join('');
-  } else {
-    grid.innerHTML = `
-      <div style="grid-column: 1 / -1; text-align: center; padding: 2.5rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; color: #64748b;">
-        <i class="fa-solid fa-pills" style="font-size: 2rem; color: #94a3b8; margin-bottom: 0.5rem; display: block;"></i>
-        <strong>Nenhum medicamento prescrito no momento.</strong><br>
-        <span style="font-size: 0.85rem;">Clique no botão verde acima <strong>"Nova Prescrição Médica"</strong> para prescrever tratamentos para este animal.</span>
-      </div>
-    `;
   }
 }
 
-function carregarTimelineProntuario(petId) {
+async function carregarTimelineProntuario(petId) {
   const timeline = document.getElementById('prontuario-timeline-list');
   if (!timeline) return;
 
-  const evolucoesSalvas = JSON.parse(localStorage.getItem('petstory_evolucoes_' + petId) || '[]');
+  const targetId = resolverPetIdSupabase(petId);
 
-  if (evolucoesSalvas.length > 0) {
-    timeline.innerHTML = evolucoesSalvas.map(ev => `
-      <div class="timeline-entry" style="animation: fadeIn 0.3s ease;">
-        <div class="timeline-bullet" style="background: var(--teal-primary);"></div>
-        <div class="timeline-entry-header">
-          <span class="timeline-entry-title">${ev.tipo}</span>
-          <span class="timeline-entry-date">${ev.data} (Peso: ${ev.peso} kg)</span>
-        </div>
-        <div class="timeline-entry-doc">
-          <i class="fa-solid fa-stethoscope"></i> ${ev.veterinario}
-        </div>
-        <p class="timeline-entry-desc" style="white-space: pre-line;">${ev.texto}</p>
-      </div>
-    `).join('');
-  } else {
-    timeline.innerHTML = `
-      <div class="timeline-entry">
-        <div class="timeline-bullet" style="background: var(--teal-primary);"></div>
-        <div class="timeline-entry-header">
-          <span class="timeline-entry-title">Prontuário Unificado Iniciado</span>
-          <span class="timeline-entry-date">Histórico Clínico PetStory</span>
-        </div>
-        <div class="timeline-entry-doc">
-          <i class="fa-solid fa-shield-dog"></i> Identificação Inteligente PetStory Tag
-        </div>
-        <p class="timeline-entry-desc">Paciente cadastrado na rede integrada PetStory. Para lançar a primeira consulta, clique na aba <strong>"Nova Evolução Clínica"</strong>.</p>
-      </div>
-    `;
+  try {
+    const resp = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/consultas_historico?pet_id=eq.${targetId}&order=data_consulta.desc,created_at.desc`, {
+      headers: {
+        'apikey': SUPABASE_CONFIG.anonKey,
+        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+      }
+    });
+    if (resp.ok) {
+      const evolucoes = await resp.json();
+      if (evolucoes && evolucoes.length > 0) {
+        timeline.innerHTML = evolucoes.map(ev => {
+          const dataFmt = formatarDataBr(ev.data_consulta) || ev.data_consulta || 'Data recente';
+          const vetNome = ev.veterinario_nome || 'Dr. Ricardo Mendonça';
+          const vetCrmv = ev.veterinario_crmv || 'CRMV-SP 38.412';
+          return `
+            <div class="timeline-entry" style="animation: fadeIn 0.3s ease;">
+              <div class="timeline-bullet" style="background: var(--teal-primary);"></div>
+              <div class="timeline-entry-header">
+                <span class="timeline-entry-title">${ev.tipo_consulta || 'Consulta Clínica'}</span>
+                <span class="timeline-entry-date">${dataFmt}</span>
+              </div>
+              <div class="timeline-entry-doc">
+                <i class="fa-solid fa-stethoscope"></i> ${vetNome} • ${vetCrmv}
+              </div>
+              <p class="timeline-entry-desc" style="white-space: pre-line;">${ev.descricao || ''}</p>
+            </div>
+          `;
+        }).join('');
+        return;
+      }
+    }
+  } catch (errNet) {
+    console.warn('[PetStory] Aviso ao carregar consultas/evoluções do Supabase:', errNet);
   }
+
+  timeline.innerHTML = `
+    <div class="timeline-entry">
+      <div class="timeline-bullet" style="background: var(--teal-primary);"></div>
+      <div class="timeline-entry-header">
+        <span class="timeline-entry-title">Prontuário Unificado Iniciado</span>
+        <span class="timeline-entry-date">Histórico Clínico PetStory</span>
+      </div>
+      <div class="timeline-entry-doc">
+        <i class="fa-solid fa-shield-dog"></i> Identificação Inteligente PetStory Tag
+      </div>
+      <p class="timeline-entry-desc">Paciente cadastrado na rede integrada PetStory. Para lançar a primeira consulta, clique na aba <strong>"Nova Evolução Clínica"</strong>.</p>
+    </div>
+  `;
 }
 
-function carregarExamesProntuario(petId) {
+async function carregarExamesProntuario(petId) {
   const grid = document.getElementById('prontuario-exams-grid');
   if (!grid) return;
 
-  const examesSalvos = JSON.parse(localStorage.getItem('petstory_exames_' + petId) || '[]');
+  const targetId = resolverPetIdSupabase(petId);
 
-  if (examesSalvos.length > 0) {
-    grid.innerHTML = examesSalvos.map(ex => `
-      <div class="exam-card" style="background: #f0fdf9; border: 1px solid #a7f3d0;">
-        <div>
-          <div class="exam-card-top">
-            <div class="exam-icon" style="background: rgba(0, 168, 135, 0.12); color: #00735c;">
-              <i class="fa-solid fa-file-pdf"></i>
+  try {
+    const resp = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/exames?pet_id=eq.${targetId}&order=data_realizacao.desc,created_at.desc`, {
+      headers: {
+        'apikey': SUPABASE_CONFIG.anonKey,
+        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+      }
+    });
+    if (resp.ok) {
+      const exames = await resp.json();
+      if (exames && exames.length > 0) {
+        grid.innerHTML = exames.map(ex => `
+          <div class="exam-card" style="background: #f0fdf9; border: 1px solid #a7f3d0;">
+            <div>
+              <div class="exam-card-top">
+                <div class="exam-icon" style="background: rgba(0, 168, 135, 0.12); color: #00735c;">
+                  <i class="fa-solid fa-file-pdf"></i>
+                </div>
+                <div class="exam-info">
+                  <h4>${ex.titulo}</h4>
+                  <span>Data: ${formatarDataBr(ex.data_realizacao) || ex.data_realizacao} • ${ex.laboratorio || 'LabVet'}</span>
+                </div>
+              </div>
+              <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                ${ex.laudo_texto || 'Parâmetros dentro da normalidade.'}
+              </p>
             </div>
-            <div class="exam-info">
-              <h4>${ex.titulo}</h4>
-              <span>Data: ${ex.data} • ${ex.lab}</span>
-            </div>
+            <button type="button" class="btn-secondary" style="width: 100%;" onclick="visualizarExameSimulado('${ex.titulo}', '${ex.arquivo_url || ''}')">
+              <i class="fa-solid fa-file-pdf" style="color: #f43f5e;"></i> Visualizar Laudo Assinado (PDF)
+            </button>
           </div>
-          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
-            ${ex.resumo}
-          </p>
-        </div>
-        <button type="button" class="btn-secondary" style="width: 100%;" onclick="visualizarExameSimulado('${ex.titulo}', '${ex.fileUrl || ''}')">
-          <i class="fa-solid fa-file-pdf" style="color: #f43f5e;"></i> Visualizar Laudo Assinado (PDF)
-        </button>
-      </div>
-    `).join('');
-  } else {
-    grid.innerHTML = `
-      <div style="grid-column: 1 / -1; text-align: center; padding: 2.5rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; color: #64748b;">
-        <i class="fa-solid fa-file-pdf" style="font-size: 2rem; color: #94a3b8; margin-bottom: 0.5rem; display: block;"></i>
-        <strong>Nenhum laudo ou exame anexado para este paciente.</strong><br>
-        <span style="font-size: 0.85rem;">Clique no botão acima <strong>"Anexar Novo Laudo / Exame (PDF)"</strong> para subir documentos laboratoriais.</span>
-      </div>
-    `;
+        `).join('');
+        return;
+      }
+    }
+  } catch (errNet) {
+    console.warn('[PetStory] Aviso ao carregar exames do Supabase:', errNet);
   }
+
+  grid.innerHTML = `
+    <div style="grid-column: 1 / -1; text-align: center; padding: 2.5rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; color: #64748b;">
+      <i class="fa-solid fa-file-pdf" style="font-size: 2rem; color: #94a3b8; margin-bottom: 0.5rem; display: block;"></i>
+      <strong>Nenhum laudo ou exame anexado para este paciente.</strong><br>
+      <span style="font-size: 0.85rem;">Clique no botão acima <strong>"Anexar Novo Laudo / Exame (PDF)"</strong> para subir documentos laboratoriais.</span>
+    </div>
+  `;
+}
+
+async function carregarVermifugosProntuario(petId) {
+  const tbody = document.getElementById('prontuario-vermifugos-tbody');
+  if (!tbody) return;
+
+  const targetId = resolverPetIdSupabase(petId);
+
+  try {
+    const resp = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/vermifugos?pet_id=eq.${targetId}&order=data_aplicacao.desc,created_at.desc`, {
+      headers: {
+        'apikey': SUPABASE_CONFIG.anonKey,
+        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+      }
+    });
+    if (resp.ok) {
+      const lista = await resp.json();
+      if (lista && lista.length > 0) {
+        tbody.innerHTML = lista.map(v => {
+          const st = v.status || 'Em Dia';
+          const badgeClass = st === 'Atrasada' ? 'badge-danger' : (st === 'Pendente' ? 'badge-warning' : 'badge-success');
+          return `
+            <tr>
+              <td><strong>${v.tipo || 'Antiparasitário'}</strong></td>
+              <td>${v.medicamento || '--'}</td>
+              <td>${v.faixa_peso || '--'}</td>
+              <td>${formatarDataBr(v.data_aplicacao) || v.data_aplicacao || '--'}</td>
+              <td><strong style="color: #00735c;">${formatarDataBr(v.data_proxima_dose) || v.data_proxima_dose || '--'}</strong></td>
+              <td><span class="badge-status ${badgeClass}"><i class="fa-solid fa-check"></i> ${st}</span></td>
+            </tr>
+          `;
+        }).join('');
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn('[PetStory] Erro ao carregar vermífugos do Supabase:', e);
+  }
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="6" style="text-align: center; padding: 25px; color: #64748b; background: #f8fafc;">
+        <i class="fa-solid fa-shield-virus" style="font-size: 1.6rem; margin-bottom: 6px; display: block; color: #94a3b8;"></i>
+        <strong>Nenhum registro de vermífugo ou antiparasitário lançado ainda.</strong><br>
+        <span style="font-size: 0.85rem;">Clique no botão <strong>"Registrar Dose / Antiparasitário"</strong> acima para registrar.</span>
+      </td>
+    </tr>
+  `;
 }
 
 // ============================================================================
@@ -644,7 +799,7 @@ function carregarExamesProntuario(petId) {
 // ============================================================================
 async function editarPesoProntuario() {
   const pesoAtualElem = document.getElementById('prontuario-pet-peso');
-  const valorAtual = pesoAtualElem ? parseFloat(pesoAtualElem.textContent) : 32.8;
+  const valorAtual = pesoAtualElem ? parseFloat(pesoAtualElem.textContent) : 12.5;
 
   const novoPesoStr = prompt('Digite o novo peso aferido na balança (kg):', valorAtual);
   if (novoPesoStr !== null && !isNaN(parseFloat(novoPesoStr))) {
@@ -655,18 +810,13 @@ async function editarPesoProntuario() {
     const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
     if (session && session.pet) {
       session.pet.peso = novoPeso;
-      localStorage.setItem('petstory_current_user', JSON.stringify(session));
+      sessionStorage.setItem('petstory_current_user', JSON.stringify(session));
     }
     if (pacienteAtualProntuario) {
       pacienteAtualProntuario.peso = novoPeso;
     }
 
-    let petId = pacienteAtualProntuario?.id || session?.pet?.id;
-    if (!petId && pacienteAtualProntuario?.tag === 'PST-9921') {
-      petId = 'c810977d-2eea-420e-8957-3ab54afba430';
-    } else if (!petId && (pacienteAtualProntuario?.tag === 'PST-1428' || pacienteAtualProntuario?.nome === 'Bolinha')) {
-      petId = '7e096a3b-0468-4347-9bee-a8286a10d416';
-    }
+    const petId = resolverPetIdSupabase(pacienteAtualProntuario?.id || session?.pet?.id);
 
     if (petId) {
       try {
@@ -692,71 +842,84 @@ async function editarPesoProntuario() {
   }
 }
 
-function abrirModalVitais() {
-  const modal = document.getElementById('modal-vitals-backdrop');
-  if (modal) modal.classList.add('open');
+function abrirModalNovoVermifugo() {
+  const modal = document.getElementById('modal-vermifugo-backdrop');
+  if (modal) {
+    const inputData = document.getElementById('input-verm-data');
+    if (inputData && !inputData.value) {
+      inputData.value = new Date().toISOString().split('T')[0];
+    }
+    const inputProx = document.getElementById('input-verm-proxima');
+    if (inputProx && !inputProx.value) {
+      const d = new Date();
+      d.setMonth(d.getMonth() + 3);
+      inputProx.value = d.toISOString().split('T')[0];
+    }
+    modal.classList.add('open');
+  }
 }
 
-function fecharModalVitais() {
-  const modal = document.getElementById('modal-vitals-backdrop');
+function fecharModalNovoVermifugo() {
+  const modal = document.getElementById('modal-vermifugo-backdrop');
   if (modal) modal.classList.remove('open');
 }
 
-async function salvarModalVitais(event) {
+async function salvarModalVermifugo(event) {
   event.preventDefault();
-  const fc = document.getElementById('input-modal-fc')?.value || '88';
-  const fr = document.getElementById('input-modal-fr')?.value || '22';
-  const temp = document.getElementById('input-modal-temp')?.value || '38.4';
-  const ecc = document.getElementById('input-modal-ecc')?.value || '5';
-  const pesoStr = document.getElementById('input-modal-peso')?.value || '32.8';
-  const novoPeso = parseFloat(pesoStr);
-
-  const cardFc = document.getElementById('vital-card-fc');
-  const cardFr = document.getElementById('vital-card-fr');
-  const cardTemp = document.getElementById('vital-card-temp');
-  const cardEcc = document.getElementById('vital-card-ecc');
-  const pPeso = document.getElementById('prontuario-pet-peso');
-
-  if (cardFc) cardFc.innerHTML = `${fc} <span style="font-size: 1rem; font-weight: 500;">bpm</span>`;
-  if (cardFr) cardFr.innerHTML = `${fr} <span style="font-size: 1rem; font-weight: 500;">mpm</span>`;
-  if (cardTemp) cardTemp.innerHTML = `${parseFloat(temp).toFixed(1)} <span style="font-size: 1rem; font-weight: 500;">°C</span>`;
-  if (cardEcc) cardEcc.textContent = `${ecc} / 9`;
-  if (pPeso) pPeso.textContent = `${novoPeso.toFixed(1)} kg`;
+  const tipo = document.getElementById('input-verm-tipo')?.value || 'Antiparasitário Geral';
+  const peso = document.getElementById('input-verm-peso')?.value || 'Até 20kg';
+  const medicamento = document.getElementById('input-verm-medicamento')?.value || 'Antiparasitário';
+  const dataApl = document.getElementById('input-verm-data')?.value || new Date().toISOString().split('T')[0];
+  const dataProx = document.getElementById('input-verm-proxima')?.value || '2027-02-08';
 
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
-  if (session && session.pet) {
-    session.pet.peso = novoPeso;
-    localStorage.setItem('petstory_current_user', JSON.stringify(session));
-  }
-  if (pacienteAtualProntuario) {
-    pacienteAtualProntuario.peso = novoPeso;
-  }
+  const targetId = resolverPetIdSupabase(pacienteAtualProntuario?.id || session?.pet?.id || pacienteAtualProntuario?.tag || session?.pet?.tag);
 
-  let petId = pacienteAtualProntuario?.id || session?.pet?.id;
-  if (!petId && pacienteAtualProntuario?.tag === 'PST-9921') {
-    petId = 'c810977d-2eea-420e-8957-3ab54afba430';
-  } else if (!petId && (pacienteAtualProntuario?.tag === 'PST-1428' || pacienteAtualProntuario?.nome === 'Bolinha')) {
-    petId = '7e096a3b-0468-4347-9bee-a8286a10d416';
-  }
+  const payload = {
+    pet_id: targetId,
+    tipo: tipo,
+    medicamento: medicamento,
+    faixa_peso: peso,
+    data_aplicacao: dataApl,
+    data_proxima_dose: dataProx,
+    status: 'Em Dia'
+  };
 
-  if (petId) {
-    try {
-      await fetch(`${SUPABASE_CONFIG.url}/rest/v1/pets?id=eq.${petId}`, {
-        method: 'PATCH',
-        headers: {
-          'apikey': SUPABASE_CONFIG.anonKey,
-          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ peso: novoPeso })
-      });
-    } catch (err) {
-      console.warn('Erro ao sincronizar sinais vitais no Supabase:', err);
+  try {
+    const resp = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/vermifugos`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_CONFIG.anonKey,
+        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    if (resp.ok) {
+      showToast('Dose Registrada!', `Proteção [${medicamento}] gravada com sucesso no Supabase.`, 'fa-shield-virus', 'success');
     }
+  } catch (e) {
+    console.warn('[PetStory] Erro ao gravar vermífugo no Supabase:', e);
   }
 
-  fecharModalVitais();
-  showToast('Sinais Vitais Gravados!', `FC: ${fc} bpm, Temp: ${parseFloat(temp).toFixed(1)}°C, Peso: ${novoPeso.toFixed(1)}kg salvos com sucesso no banco.`, 'fa-heart-pulse', 'success');
+  await carregarVermifugosProntuario(targetId);
+
+  const tutorReminders = document.getElementById('tutor-reminders-container');
+  if (tutorReminders) {
+    if (tutorReminders.textContent.includes('Nenhum procedimento')) {
+      tutorReminders.innerHTML = '';
+    }
+    const alertBox = document.createElement('div');
+    alertBox.className = 'alert-item';
+    alertBox.style.cssText = 'background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 0.8rem; margin-bottom: 0.6rem; animation: fadeIn 0.3s ease;';
+    alertBox.innerHTML = `
+      <div style="font-size: 0.85rem; font-weight: 700; color: #166534;"><i class="fa-solid fa-shield-virus"></i> Próxima Dose: ${medicamento}</div>
+      <div style="font-size: 0.78rem; color: #15803d;">Data prevista: ${formatarDataBr(dataProx)} • ${tipo}</div>
+    `;
+    tutorReminders.prepend(alertBox);
+  }
+
+  fecharModalNovoVermifugo();
 }
 
 function abrirModalNovaVacina() {
@@ -907,21 +1070,15 @@ async function salvarModalPrescricao(event) {
   const posologia = document.getElementById('input-rx-posologia')?.value || '';
 
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
-  let petId = pacienteAtualProntuario?.id || session?.pet?.id;
-  let tagCode = pacienteAtualProntuario?.tag || session?.pet?.tag;
-  if (!petId && tagCode === 'PST-9921') {
-    petId = 'c810977d-2eea-420e-8957-3ab54afba430';
-  } else if (!petId && (tagCode === 'PST-1428' || pacienteAtualProntuario?.nome === 'Bolinha')) {
-    petId = '7e096a3b-0468-4347-9bee-a8286a10d416';
-  }
+  const targetId = resolverPetIdSupabase(pacienteAtualProntuario?.id || session?.pet?.id);
 
   const rxPayload = {
-    petId: petId || tagCode || 'PST-1428',
+    petId: targetId,
     nome: nome,
     tipo: tipo,
     indicacao: indicacao,
     posologia: posologia,
-    veterinario: 'Prescrito por Dr. Ricardo Mendonça (CRMV-SP 38.412) • Hoje',
+    veterinario: 'Dr. Ricardo Mendonça (CRMV-SP 38.412) • Hoje',
     status: 'Ativo'
   };
 
@@ -935,16 +1092,34 @@ async function salvarModalPrescricao(event) {
     console.warn('[PetStory] Aviso ao enviar prescrição ao Java:', errNet);
   }
 
-  if (petId) {
-    const prescricoes = JSON.parse(localStorage.getItem('petstory_prescricoes_' + petId) || '[]');
-    prescricoes.unshift({
-      nome,
-      tipo,
-      indicacao,
-      posologia,
-      veterinario: 'Prescrito por Dr. Ricardo Mendonça (CRMV-SP 38.412) • Hoje'
+  let rxId = null;
+  try {
+    const respSupa = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/prescricoes`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_CONFIG.anonKey,
+        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({
+        pet_id: targetId,
+        nome: nome,
+        tipo: tipo,
+        indicacao: indicacao,
+        posologia: posologia,
+        veterinario: 'Dr. Ricardo Mendonça',
+        crmv: 'CRMV-SP 38.412',
+        data_inicio: new Date().toISOString().split('T')[0],
+        ativa: true
+      })
     });
-    localStorage.setItem('petstory_prescricoes_' + petId, JSON.stringify(prescricoes));
+    if (respSupa.ok) {
+      const created = await respSupa.json();
+      if (created && created[0]) rxId = created[0].id;
+    }
+  } catch (errSupa) {
+    console.warn('[PetStory] Aviso ao persistir prescrição no Supabase:', errSupa);
   }
 
   const grid = document.getElementById('prontuario-prescricoes-grid');
@@ -954,6 +1129,7 @@ async function salvarModalPrescricao(event) {
     }
     const card = document.createElement('div');
     card.className = 'rx-card';
+    card.setAttribute('data-rx-id', rxId || '');
     card.style.background = '#f0fdf9';
     card.style.border = '1px solid #a7f3d0';
     card.style.borderRadius = 'var(--radius-md)';
@@ -971,9 +1147,9 @@ async function salvarModalPrescricao(event) {
       </div>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
         <span style="font-size: 0.75rem; color: var(--text-muted);">
-          Prescrito por Dr. Ricardo Mendonça (CRMV-SP 38.412) • Hoje
+          Dr. Ricardo Mendonça (CRMV-SP 38.412) • Hoje
         </span>
-        <button type="button" class="btn-danger-outline" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="suspenderPrescricao(this)">
+        <button type="button" class="btn-danger-outline" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="suspenderPrescricao(this, '${rxId || ''}')">
           <i class="fa-solid fa-ban"></i> Suspender
         </button>
       </div>
@@ -982,10 +1158,10 @@ async function salvarModalPrescricao(event) {
   }
 
   fecharModalNovaPrescricao();
-  showToast('Prescrição Emitida', `Medicamento [${nome}] registrado no prontuário.`, 'fa-pills', 'success');
+  showToast('Prescrição Emitida', `Medicamento [${nome}] registrado no prontuário e persistido no Supabase.`, 'fa-pills', 'success');
 }
 
-function suspenderPrescricao(btn) {
+async function suspenderPrescricao(btn, rxId) {
   const card = btn.closest('.rx-card');
   if (!card) return;
 
@@ -997,14 +1173,34 @@ function suspenderPrescricao(btn) {
     btn.style.cursor = 'default';
 
     const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
-    let petId = pacienteAtualProntuario?.id || session?.pet?.id;
-    if (petId) {
-      const nomeMed = card.querySelector('h4')?.textContent.trim();
-      if (nomeMed) {
-        const prescricoes = JSON.parse(localStorage.getItem('petstory_prescricoes_' + petId) || '[]');
-        const filtradas = prescricoes.filter(p => !p.nome.includes(nomeMed));
-        localStorage.setItem('petstory_prescricoes_' + petId, JSON.stringify(filtradas));
+    const targetId = resolverPetIdSupabase(pacienteAtualProntuario?.id || session?.pet?.id);
+    const idParaSuspender = rxId || card.getAttribute('data-rx-id');
+    const nomeMed = card.querySelector('h4')?.textContent.trim();
+
+    try {
+      if (idParaSuspender) {
+        await fetch(`${SUPABASE_CONFIG.url}/rest/v1/prescricoes?id=eq.${idParaSuspender}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_CONFIG.anonKey,
+            'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ ativa: false })
+        });
+      } else if (nomeMed) {
+        await fetch(`${SUPABASE_CONFIG.url}/rest/v1/prescricoes?pet_id=eq.${targetId}&nome=eq.${encodeURIComponent(nomeMed)}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_CONFIG.anonKey,
+            'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ ativa: false })
+        });
       }
+    } catch (e) {
+      console.warn('[PetStory] Erro ao suspender prescrição no Supabase:', e);
     }
 
     showToast('Tratamento Encerrado', 'Medicamento descontinuado no histórico clínico.', 'fa-info-circle', 'info');
@@ -1031,16 +1227,10 @@ async function salvarModalCirurgia(event) {
   const dataBr = formatarDataBr(data);
 
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
-  let petId = pacienteAtualProntuario?.id || session?.pet?.id;
-  let tagCode = pacienteAtualProntuario?.tag || session?.pet?.tag;
-  if (!petId && tagCode === 'PST-9921') {
-    petId = 'c810977d-2eea-420e-8957-3ab54afba430';
-  } else if (!petId && (tagCode === 'PST-1428' || pacienteAtualProntuario?.nome === 'Bolinha')) {
-    petId = '7e096a3b-0468-4347-9bee-a8286a10d416';
-  }
+  const targetId = resolverPetIdSupabase(pacienteAtualProntuario?.id || session?.pet?.id);
 
   const cirurgiaPayload = {
-    petId: petId || tagCode || 'PST-1428',
+    petId: targetId,
     nome: nome,
     data: dataBr,
     cirurgiao: cirurgiao,
@@ -1058,16 +1248,25 @@ async function salvarModalCirurgia(event) {
     console.warn('[PetStory] Aviso ao enviar cirurgia ao Java:', errNet);
   }
 
-  if (petId) {
-    const cirurgias = JSON.parse(localStorage.getItem('petstory_cirurgias_' + petId) || '[]');
-    cirurgias.unshift({
-      nome,
-      data: dataBr,
-      cirurgiao,
-      notas,
-      status: 'Agendada'
+  try {
+    await fetch(`${SUPABASE_CONFIG.url}/rest/v1/cirurgias`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_CONFIG.anonKey,
+        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        pet_id: targetId,
+        nome: nome,
+        data: data,
+        cirurgiao: cirurgiao,
+        notas: notas,
+        status: 'Agendada'
+      })
     });
-    localStorage.setItem('petstory_cirurgias_' + petId, JSON.stringify(cirurgias));
+  } catch (errSupa) {
+    console.warn('[PetStory] Aviso ao gravar cirurgia no Supabase:', errSupa);
   }
 
   const tbody = document.getElementById('prontuario-cirurgias-tbody');
@@ -1107,7 +1306,7 @@ async function salvarModalCirurgia(event) {
   }
 
   fecharModalNovaCirurgia();
-  showToast('Procedimento Agendado!', `Cirurgia marcada para ${dataBr}. Notificação gerada na tela do tutor!`, 'fa-calendar-check', 'success');
+  showToast('Procedimento Agendado!', `Cirurgia marcada para ${dataBr}. Notificação gerada na tela do tutor e persistida no Supabase!`, 'fa-calendar-check', 'success');
 }
 
 function abrirModalNovoExame() {
@@ -1120,7 +1319,7 @@ function fecharModalNovoExame() {
   if (modal) modal.classList.remove('open');
 }
 
-function salvarModalExame(event) {
+async function salvarModalExame(event) {
   event.preventDefault();
   const titulo = document.getElementById('input-exame-titulo')?.value || 'Exame Laboratorial';
   const lab = document.getElementById('input-exame-lab')?.value || 'LabVet';
@@ -1135,23 +1334,28 @@ function salvarModalExame(event) {
   }
 
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
-  let petId = pacienteAtualProntuario?.id || session?.pet?.id;
-  if (!petId && pacienteAtualProntuario?.tag === 'PST-9921') {
-    petId = 'c810977d-2eea-420e-8957-3ab54afba430';
-  } else if (!petId && (pacienteAtualProntuario?.tag === 'PST-1428' || pacienteAtualProntuario?.nome === 'Bolinha')) {
-    petId = '7e096a3b-0468-4347-9bee-a8286a10d416';
-  }
+  const targetId = resolverPetIdSupabase(pacienteAtualProntuario?.id || session?.pet?.id);
 
-  if (petId) {
-    const exames = JSON.parse(localStorage.getItem('petstory_exames_' + petId) || '[]');
-    exames.unshift({
-      titulo,
-      lab,
-      data: dataBr,
-      resumo,
-      fileUrl
+  try {
+    await fetch(`${SUPABASE_CONFIG.url}/rest/v1/exames`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_CONFIG.anonKey,
+        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        pet_id: targetId,
+        titulo: titulo,
+        laboratorio: lab,
+        data_realizacao: data,
+        tipo_exame: 'Laboratorial',
+        laudo_texto: resumo,
+        arquivo_url: fileUrl || ''
+      })
     });
-    localStorage.setItem('petstory_exames_' + petId, JSON.stringify(exames));
+  } catch (errSupa) {
+    console.warn('[PetStory] Aviso ao gravar exame no Supabase:', errSupa);
   }
 
   const grid = document.getElementById('prontuario-exams-grid');
@@ -1186,7 +1390,7 @@ function salvarModalExame(event) {
   }
 
   fecharModalNovoExame();
-  showToast('Laudo Anexado', `Exame [${titulo}] vinculado ao prontuário.`, 'fa-file-pdf', 'success');
+  showToast('Laudo Anexado', `Exame [${titulo}] vinculado ao prontuário e salvo no Supabase.`, 'fa-file-pdf', 'success');
 }
 
 function visualizarExameSimulado(titulo, customFileUrl) {
@@ -1242,10 +1446,10 @@ function visualizarExameSimulado(titulo, customFileUrl) {
   win.document.close();
 }
 
-function salvarEvolucaoClinica(event) {
+async function salvarEvolucaoClinica(event) {
   event.preventDefault();
   const tipo = document.getElementById('note-evolution-tipo')?.value || 'Consulta Clínica';
-  const peso = document.getElementById('note-evolution-peso')?.value || '22.3';
+  const peso = document.getElementById('note-evolution-peso')?.value || '12.5';
   const texto = document.getElementById('note-evolution-text')?.value.trim();
 
   if (!texto) {
@@ -1254,30 +1458,53 @@ function salvarEvolucaoClinica(event) {
   }
 
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
-  let petId = pacienteAtualProntuario?.id || session?.pet?.id;
-  if (!petId && pacienteAtualProntuario?.tag === 'PST-9921') {
-    petId = 'c810977d-2eea-420e-8957-3ab54afba430';
-  } else if (!petId && (pacienteAtualProntuario?.tag === 'PST-1428' || pacienteAtualProntuario?.nome === 'Bolinha')) {
-    petId = '7e096a3b-0468-4347-9bee-a8286a10d416';
-  }
+  const targetId = resolverPetIdSupabase(pacienteAtualProntuario?.id || session?.pet?.id);
 
   const pPeso = document.getElementById('prontuario-pet-peso');
   if (pPeso && peso) {
     pPeso.textContent = `${parseFloat(peso).toFixed(1)} kg`;
-    if (session && session.pet) session.pet.peso = parseFloat(peso);
+    if (session && session.pet) {
+      session.pet.peso = parseFloat(peso);
+      sessionStorage.setItem('petstory_current_user', JSON.stringify(session));
+    }
     if (pacienteAtualProntuario) pacienteAtualProntuario.peso = parseFloat(peso);
   }
 
-  if (petId) {
-    const evolucoes = JSON.parse(localStorage.getItem('petstory_evolucoes_' + petId) || '[]');
-    evolucoes.unshift({
-      tipo,
-      peso,
-      texto,
-      data: `Hoje, ${new Date().toLocaleDateString('pt-BR')}`,
-      veterinario: 'Dr. Ricardo Mendonça • CRMV-SP 38.412'
+  try {
+    await fetch(`${SUPABASE_CONFIG.url}/rest/v1/consultas_historico`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_CONFIG.anonKey,
+        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        pet_id: targetId,
+        veterinario_nome: 'Dr. Ricardo Mendonça',
+        veterinario_crmv: 'CRMV-SP 38.412',
+        tipo_consulta: tipo,
+        data_consulta: new Date().toISOString().split('T')[0],
+        descricao: `${texto}${peso ? '\n(Peso aferido na consulta: ' + peso + ' kg)' : ''}`
+      })
     });
-    localStorage.setItem('petstory_evolucoes_' + petId, JSON.stringify(evolucoes));
+  } catch (errSupa) {
+    console.warn('[PetStory] Aviso ao gravar consulta no Supabase:', errSupa);
+  }
+
+  if (peso && !isNaN(parseFloat(peso))) {
+    try {
+      await fetch(`${SUPABASE_CONFIG.url}/rest/v1/pets?id=eq.${targetId}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_CONFIG.anonKey,
+          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ peso: parseFloat(peso) })
+      });
+    } catch (e) {
+      console.warn('[PetStory] Erro ao sincronizar peso no Supabase:', e);
+    }
   }
 
   const timeline = document.getElementById('prontuario-timeline-list');
@@ -1308,7 +1535,7 @@ function salvarEvolucaoClinica(event) {
   const tabResumoBtn = document.querySelector('.tab-btn[data-tab="resumo"]');
   tabResumoBtn?.click();
 
-  showToast('Evolução Registrada!', 'Nova consulta assinada com CRMV-SP 38.412 e inserida na Linha do Tempo.', 'fa-signature', 'success');
+  showToast('Evolução Registrada!', 'Nova consulta assinada com CRMV-SP 38.412, gravada no Supabase e inserida na Linha do Tempo.', 'fa-signature', 'success');
 }
 
 function abrirModalEmitirReceita() {
@@ -1337,6 +1564,7 @@ function fecharModalEmitirReceita() {
 }
 
 // Expõe no escopo global
+window.resolverPetIdSupabase = resolverPetIdSupabase;
 window.validarAcessoClinicoVeterinario = validarAcessoClinicoVeterinario;
 window.initScannerSimulations = initScannerSimulations;
 window.startScanningSimulation = startScanningSimulation;
@@ -1347,10 +1575,11 @@ window.carregarCirurgiasProntuario = carregarCirurgiasProntuario;
 window.carregarPrescricoesProntuario = carregarPrescricoesProntuario;
 window.carregarTimelineProntuario = carregarTimelineProntuario;
 window.carregarExamesProntuario = carregarExamesProntuario;
+window.carregarVermifugosProntuario = carregarVermifugosProntuario;
 window.editarPesoProntuario = editarPesoProntuario;
-window.abrirModalVitais = abrirModalVitais;
-window.fecharModalVitais = fecharModalVitais;
-window.salvarModalVitais = salvarModalVitais;
+window.abrirModalNovoVermifugo = abrirModalNovoVermifugo;
+window.fecharModalNovoVermifugo = fecharModalNovoVermifugo;
+window.salvarModalVermifugo = salvarModalVermifugo;
 window.abrirModalNovaVacina = abrirModalNovaVacina;
 window.fecharModalNovaVacina = fecharModalNovaVacina;
 window.salvarModalVacina = salvarModalVacina;

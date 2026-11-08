@@ -144,43 +144,7 @@ function verificarPermissaoRota(screenKey) {
 }
 
 // ============================================================================
-// CREDENCIAIS LOCAIS (FALLBACK DE CONTINGÊNCIA)
-// ============================================================================
-function salvarCredencialTutor(email, senha) {
-  try {
-    const creds = JSON.parse(localStorage.getItem('petstory_auth_credentials') || '{}');
-    const norm = (email || '').toLowerCase().trim();
-    creds[norm] = senha;
-    if (norm.includes('@')) {
-      const prefix = norm.split('@')[0];
-      creds[prefix + '@gmail.com'] = senha;
-      creds[prefix + '@example.com'] = senha;
-    }
-    localStorage.setItem('petstory_auth_credentials', JSON.stringify(creds));
-  } catch (e) {
-    console.warn('Erro ao armazenar credencial:', e);
-  }
-}
-
-function obterCredencialTutor(email) {
-  try {
-    const creds = JSON.parse(localStorage.getItem('petstory_auth_credentials') || '{}');
-    const norm = (email || '').toLowerCase().trim();
-    if (creds[norm]) return creds[norm];
-    if (norm.includes('@')) {
-      const prefix = norm.split('@')[0];
-      if (creds[prefix + '@example.com']) return creds[prefix + '@example.com'];
-      if (creds[prefix + '@gmail.com']) return creds[prefix + '@gmail.com'];
-      if (creds[prefix]) return creds[prefix];
-    }
-    return null;
-  } catch (e) {
-    return null;
-  }
-}
-
-// ============================================================================
-// GESTÃO DE SESSÃO DO TUTOR (LOCALSTORAGE)
+// GESTÃO DE SESSÃO DO TUTOR (SESSIONSTORAGE - PADRÃO DE SEGURANÇA BANCÁRIA)
 // ============================================================================
 function salvarSessao(tutor, pet, tagCode) {
   const sessionData = {
@@ -189,18 +153,28 @@ function salvarSessao(tutor, pet, tagCode) {
     tagCode: tagCode || pet?.tag,
     loginAt: Date.now()
   };
-  localStorage.setItem('petstory_current_user', JSON.stringify(sessionData));
+  sessionStorage.setItem('petstory_current_user', JSON.stringify(sessionData));
+  try { localStorage.removeItem('petstory_current_user'); } catch (e) {}
 }
 
 function obterSessaoSalva() {
-  const local = localStorage.getItem('petstory_current_user');
-  if (local) {
+  const session = sessionStorage.getItem('petstory_current_user');
+  if (session) {
     try {
-      return JSON.parse(local);
+      return JSON.parse(session);
     } catch (e) {
       return null;
     }
   }
+  // Limpeza de resíduo legado do localStorage se houver
+  try {
+    const legacy = localStorage.getItem('petstory_current_user');
+    if (legacy) {
+      sessionStorage.setItem('petstory_current_user', legacy);
+      localStorage.removeItem('petstory_current_user');
+      return JSON.parse(legacy);
+    }
+  } catch (e) {}
   return null;
 }
 
@@ -220,7 +194,7 @@ async function restaurarSessaoSalva() {
           const petsDb = await respPet.json();
           if (petsDb && petsDb.length > 0 && petsDb[0].foto_url) {
             session.pet.foto_url = petsDb[0].foto_url;
-            localStorage.setItem('petstory_current_user', JSON.stringify(session));
+            sessionStorage.setItem('petstory_current_user', JSON.stringify(session));
           }
         }
       } catch (err) {
@@ -231,7 +205,8 @@ async function restaurarSessaoSalva() {
 }
 
 function encerrarSessaoTutor() {
-  localStorage.removeItem('petstory_current_user');
+  sessionStorage.removeItem('petstory_current_user');
+  try { localStorage.removeItem('petstory_current_user'); } catch (e) {}
   if (window.pacienteAtualProntuario) {
     window.pacienteAtualProntuario = null;
   }
@@ -422,7 +397,6 @@ async function handleLoginSubmit(event, role) {
         };
         const tagCode = dataJava.tag || pet.tag || 'PST-1428';
 
-        salvarCredencialTutor(email, senhaDigitada);
         salvarSessao(tutor, pet, tagCode);
         if (typeof renderTutorPortal === 'function') {
           renderTutorPortal(tutor, pet, tagCode);
@@ -441,18 +415,6 @@ async function handleLoginSubmit(event, role) {
     } catch (errNet) {
       console.warn('[PetStory] Servidor Java offline em ' + BACKEND_URL + '. Utilizando contingência local:', errNet);
       showToast('Aviso: Backend Java', 'Servidor Java em localhost:8080 não detectado. Iniciando fallback de contingência.', 'fa-server', 'warning');
-    }
-
-    // 2. Fallback de contingência local
-    const senhaEsperada = obterCredencialTutor(email);
-    if (senhaEsperada) {
-      if (senhaEsperada !== senhaDigitada) {
-        showToast('Senha Incorreta', 'A senha informada não confere com a cadastrada para este tutor.', 'fa-circle-xmark', 'danger');
-        passInput?.focus();
-        return;
-      }
-    } else {
-      salvarCredencialTutor(email, senhaDigitada);
     }
 
     try {
@@ -665,7 +627,6 @@ async function handleRedefinirSenhaSubmit(event) {
     const data = await resp.json().catch(() => ({}));
 
     if (resp.ok && (data.sucesso || data.status === 'OK')) {
-      salvarCredencialTutor(email, novaSenha);
       const loginPassInput = document.getElementById('login-tutor-pass');
       if (loginPassInput) loginPassInput.value = novaSenha;
       fecharModalRedefinirSenha();
@@ -684,12 +645,8 @@ async function handleRedefinirSenhaSubmit(event) {
       return;
     }
   } catch (err) {
-    console.warn('[PetStory] Backend offline para redefinir senha. Usando fallback:', err);
-    salvarCredencialTutor(email, novaSenha);
-    const loginPassInput = document.getElementById('login-tutor-pass');
-    if (loginPassInput) loginPassInput.value = novaSenha;
-    fecharModalRedefinirSenha();
-    showToast('Senha Atualizada (Local)', 'Senha alterada localmente com sucesso. Entre com suas novas credenciais.', 'fa-circle-check', 'success');
+    console.warn('[PetStory] Backend offline para redefinir senha:', err);
+    showToast('Falha de Comunicação', 'Servidor offline. Verifique a conexão com o backend.', 'fa-triangle-exclamation', 'warning');
   }
 }
 
@@ -702,8 +659,6 @@ window.obterAutorizacaoClinica = obterAutorizacaoClinica;
 window.limparAutorizacaoClinica = limparAutorizacaoClinica;
 window.finalizarAtendimentoClinico = finalizarAtendimentoClinico;
 window.verificarPermissaoRota = verificarPermissaoRota;
-window.salvarCredencialTutor = salvarCredencialTutor;
-window.obterCredencialTutor = obterCredencialTutor;
 window.salvarSessao = salvarSessao;
 window.obterSessaoSalva = obterSessaoSalva;
 window.restaurarSessaoSalva = restaurarSessaoSalva;

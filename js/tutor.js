@@ -405,6 +405,98 @@ async function renderTutorPortal(tutor, pet, tagCode) {
 
     remindersContainer.innerHTML = htmlLembretes;
   }
+
+  // Carrega Prescrições Ativas do Supabase
+  const rxListElem = document.getElementById('tutor-prescricoes-list');
+  if (rxListElem) {
+    const targetPetId = pet?.id || (codigo === 'PST-1428' ? '7e096a3b-0468-4347-9bee-a8286a10d416' : null);
+    if (targetPetId) {
+      try {
+        const respRx = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/prescricoes?pet_id=eq.${targetPetId}&ativa=eq.true&order=created_at.desc`, {
+          headers: {
+            'apikey': SUPABASE_CONFIG.anonKey,
+            'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+          }
+        });
+        if (respRx.ok) {
+          const prescricoes = await respRx.json();
+          if (prescricoes && prescricoes.length > 0) {
+            rxListElem.innerHTML = prescricoes.map(p => `
+              <div style="background: #ffffff; border: 1px solid #a7f3d0; border-radius: 8px; padding: 1rem; border-left: 4px solid var(--teal-primary);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.3rem;">
+                  <strong style="color: #0f172a; font-size: 0.95rem;">${p.nome}</strong>
+                  <span class="badge-status badge-success" style="font-size: 0.7rem;">${p.tipo || 'Uso Contínuo'}</span>
+                </div>
+                <div style="font-size: 0.82rem; color: #475569; margin-bottom: 0.4rem;">
+                  <strong>Indicação:</strong> ${p.indicacao || 'Terapêutica clínica'}
+                </div>
+                <div style="font-size: 0.8rem; background: #f0fdf9; padding: 0.5rem 0.7rem; border-radius: 4px; color: #065f46;">
+                  <strong>Posologia:</strong> ${p.posologia}
+                </div>
+                <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 0.4rem;">
+                  ${p.veterinario || 'Dr. Ricardo Mendonça'} • Início: ${formatarDataBr(p.data_inicio)}
+                </div>
+              </div>
+            `).join('');
+          } else {
+            rxListElem.innerHTML = `
+              <div style="text-align: center; padding: 1.5rem; color: #64748b; font-size: 0.85rem; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                <i class="fa-solid fa-pills" style="font-size: 1.5rem; margin-bottom: 0.4rem; color: #94a3b8; display: block;"></i>
+                Nenhum medicamento ativo prescrito no momento.
+              </div>
+            `;
+          }
+        }
+      } catch (errRx) {
+        console.warn('Erro ao carregar prescrições do tutor:', errRx);
+      }
+    }
+  }
+
+  // Carrega Ectoparasitas & Vermífugos do Supabase
+  const vermListElem = document.getElementById('tutor-vermifugos-list');
+  if (vermListElem) {
+    const targetPetId = pet?.id || (codigo === 'PST-1428' ? '7e096a3b-0468-4347-9bee-a8286a10d416' : null);
+    if (targetPetId) {
+      try {
+        const respVerm = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/vermifugos?pet_id=eq.${targetPetId}&order=data_proxima_dose.asc`, {
+          headers: {
+            'apikey': SUPABASE_CONFIG.anonKey,
+            'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+          }
+        });
+        if (respVerm.ok) {
+          const vermifugos = await respVerm.json();
+          if (vermifugos && vermifugos.length > 0) {
+            vermListElem.innerHTML = vermifugos.map(v => `
+              <div style="background: #ffffff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 1rem; border-left: 4px solid #3b82f6;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.3rem;">
+                  <strong style="color: #0f172a; font-size: 0.95rem;">${v.medicamento}</strong>
+                  <span class="badge-status badge-success" style="font-size: 0.7rem;">${v.status || 'Em Dia'}</span>
+                </div>
+                <div style="font-size: 0.82rem; color: #475569; margin-bottom: 0.3rem;">
+                  <span>${v.tipo} • Faixa: ${v.faixa_peso}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.78rem; background: #eff6ff; padding: 0.4rem 0.6rem; border-radius: 4px; color: #1e40af;">
+                  <span>Última aplicação: <strong>${formatarDataBr(v.data_aplicacao)}</strong></span>
+                  <span>Próxima dose: <strong style="color: #2563eb;">${formatarDataBr(v.data_proxima_dose)}</strong></span>
+                </div>
+              </div>
+            `).join('');
+          } else {
+            vermListElem.innerHTML = `
+              <div style="text-align: center; padding: 1.5rem; color: #64748b; font-size: 0.85rem; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                <i class="fa-solid fa-shield-virus" style="font-size: 1.5rem; margin-bottom: 0.4rem; color: #94a3b8; display: block;"></i>
+                Nenhum registro de vermífugo ou antipulgas no momento.
+              </div>
+            `;
+          }
+        }
+      } catch (errVerm) {
+        console.warn('Erro ao carregar vermífugos do tutor:', errVerm);
+      }
+    }
+  }
 }
 
 function copiarTagTutor() {
@@ -690,7 +782,7 @@ function handlePetPhotoUpload(event) {
       const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
       if (session && session.pet) {
         session.pet.foto_url = optimizedDataUrl;
-        localStorage.setItem('petstory_current_user', JSON.stringify(session));
+        sessionStorage.setItem('petstory_current_user', JSON.stringify(session));
 
         const petId = session.pet.id || (session.pet.tag === 'PST-1428' ? '7e096a3b-0468-4347-9bee-a8286a10d416' : null);
         if (petId) {
@@ -720,44 +812,30 @@ function handlePetPhotoUpload(event) {
 }
 
 // ============================================================================
-// GERENCIADOR DE TOKENS OTP DO TUTOR
+// GERENCIADOR DE TOKENS OTP DO TUTOR (API JAVA + SUPABASE)
 // ============================================================================
-function salvarOtpAtivo(tag, codigoOtp, nomePet) {
+async function salvarOtpNoSupabase(tag, codigoOtp, petId) {
   try {
-    const otps = JSON.parse(localStorage.getItem('petstory_active_otps') || '{}');
-    const cleanTag = (tag || '').trim().toUpperCase();
-    const cleanOtp = (codigoOtp || '').toString().trim().replace(/\s+/g, '');
-    otps[cleanTag] = {
-      code: cleanOtp,
-      petName: nomePet || obterNomePacientePorTag(cleanTag),
-      generatedAt: Date.now(),
-      expiresAt: Date.now() + 7200000 // 2 horas
-    };
-    localStorage.setItem('petstory_active_otps', JSON.stringify(otps));
-  } catch (e) {
-    console.warn('Erro ao armazenar OTP ativo:', e);
-  }
-}
-
-function obterOtpEsperadoParaTag(tag) {
-  const cleanTag = (tag || '').trim().toUpperCase();
-  if (!cleanTag) return null;
-  try {
-    const otps = JSON.parse(localStorage.getItem('petstory_active_otps') || '{}');
-    if (otps[cleanTag]) {
-      const reg = otps[cleanTag];
-      if (Date.now() <= reg.expiresAt) {
-        return reg.code;
-      } else {
-        delete otps[cleanTag];
-        localStorage.setItem('petstory_active_otps', JSON.stringify(otps));
-        return null;
-      }
+    const targetPetId = petId || (tag === 'PST-1428' ? '7e096a3b-0468-4347-9bee-a8286a10d416' : null);
+    if (targetPetId) {
+      await fetch(`${SUPABASE_CONFIG.url}/rest/v1/autorizacoes_otp`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_CONFIG.anonKey,
+          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          pet_id: targetPetId,
+          codigo_otp: codigoOtp,
+          expira_em: new Date(Date.now() + 7200000).toISOString(),
+          usado: false
+        })
+      });
     }
   } catch (e) {
-    console.warn('Erro ao ler OTP ativo:', e);
+    console.warn('Erro ao salvar autorização OTP no Supabase:', e);
   }
-  return null;
 }
 
 function obterNomePacientePorTag(tag) {
@@ -767,12 +845,6 @@ function obterNomePacientePorTag(tag) {
   if (session && session.pet && (session.pet.tag || '').toUpperCase() === cleanTag) {
     return session.pet.nome || 'Paciente';
   }
-  try {
-    const otps = JSON.parse(localStorage.getItem('petstory_active_otps') || '{}');
-    if (otps[cleanTag] && otps[cleanTag].petName) {
-      return otps[cleanTag].petName;
-    }
-  } catch (e) {}
   return `Paciente (${cleanTag})`;
 }
 
@@ -783,11 +855,7 @@ function validarTagCadastrada(tag) {
   if (session && session.pet && (session.pet.tag || '').toUpperCase() === cleanTag) {
     return true;
   }
-  try {
-    const otps = JSON.parse(localStorage.getItem('petstory_active_otps') || '{}');
-    if (otps[cleanTag]) return true;
-  } catch (e) {}
-  return cleanTag.startsWith('PST-');
+  return cleanTag.startsWith('PST-') || cleanTag.length >= 6;
 }
 
 let otpTimerInterval = null;
@@ -829,9 +897,11 @@ async function openOtpModal() {
 
   if (!code) {
     code = Math.floor(100000 + Math.random() * 900000).toString();
+    salvarOtpNoSupabase(petTag, code, petId);
   }
 
-  salvarOtpAtivo(petTag, code, petNome);
+  // Limpeza preventiva de chave legada do localStorage
+  try { localStorage.removeItem('petstory_active_otps'); } catch (e) {}
 
   const formattedCode = `${code.slice(0, 3)} ${code.slice(3)}`;
   if (codeElem) codeElem.textContent = formattedCode;

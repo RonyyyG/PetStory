@@ -137,7 +137,7 @@ async function baixarCarteirinhaPdf() {
   printWin.document.close();
 }
 
-function imprimirReceitaOficial() {
+async function imprimirReceitaOficial() {
   if (typeof fecharModalEmitirReceita === 'function') {
     fecharModalEmitirReceita();
   }
@@ -146,21 +146,35 @@ function imprimirReceitaOficial() {
   const petNome = pacienteAtual?.nome || session?.pet?.nome || 'Paciente';
   const tutorNome = pacienteAtual?.tutor_nome || session?.tutor?.nome || 'Tutor Responsável';
 
-  let petId = pacienteAtual?.id || session?.pet?.id;
-  if (!petId && pacienteAtual?.tag === 'PST-9921') {
-    petId = 'c810977d-2eea-420e-8957-3ab54afba430';
-  } else if (!petId && pacienteAtual?.tag === 'PST-1428') {
-    petId = '7e096a3b-0468-4347-9bee-a8286a10d416';
+  let petId = typeof resolverPetIdSupabase === 'function'
+    ? resolverPetIdSupabase(pacienteAtual?.id || session?.pet?.id || pacienteAtual?.tag || session?.pet?.tag)
+    : (pacienteAtual?.id || session?.pet?.id || '7e096a3b-0468-4347-9bee-a8286a10d416');
+
+  // Abre janela antecipadamente para evitar bloqueador de pop-ups
+  const win = window.open('', '_blank', 'width=750,height=850');
+
+  let prescricoesSalvas = [];
+  try {
+    const resp = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/prescricoes?pet_id=eq.${petId}&ativa=eq.true&order=created_at.desc`, {
+      headers: {
+        'apikey': SUPABASE_CONFIG.anonKey,
+        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+      }
+    });
+    if (resp.ok) {
+      prescricoesSalvas = await resp.json();
+    }
+  } catch (errRx) {
+    console.warn('[PetStory] Erro ao carregar prescrições do Supabase para o receituário:', errRx);
   }
 
-  const prescricoesSalvas = JSON.parse(localStorage.getItem('petstory_prescricoes_' + petId) || '[]');
   let htmlMedicamentos = '';
   if (prescricoesSalvas.length > 0) {
     htmlMedicamentos = prescricoesSalvas.map((p, idx) => `
       <div class="med">
         <strong>${idx + 1}. ${p.nome}</strong> (${p.tipo || 'Uso Veterinário'})<br>
         <span style="font-size: 14px; color: #334155;"><strong>Indicação:</strong> ${p.indicacao || 'Avaliação clínica'}</span><br>
-        <span style="font-size: 14px; color: #334155;"><strong>Posologia:</strong> ${p.posologia}</span>
+        <span style="font-size: 14px; color: #334155;"><strong>Posologia:</strong> ${p.posologia || 'Conforme orientação veterinária'}</span>
       </div>
     `).join('');
   } else {
@@ -171,7 +185,6 @@ function imprimirReceitaOficial() {
     `;
   }
 
-  const win = window.open('', '_blank', 'width=750,height=850');
   if (!win) {
     window.print();
     return;

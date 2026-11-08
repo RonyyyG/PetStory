@@ -904,6 +904,12 @@ button, input, select, textarea {
   margin-bottom: 0.35rem;
 }
 
+.alert-banner-content p {
+  color: #9f1239;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
 .alert-tags-row {
   display: flex;
   flex-wrap: wrap;

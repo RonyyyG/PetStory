@@ -158,7 +158,7 @@ public class ProntuarioService {
     }
 
     /**
-     * Registra uma nova vacina e atualiza seu status sanitário.
+     * Registra uma nova vacina, persiste no banco Supabase PostgreSQL e atualiza seu status sanitário.
      */
     public Vacina adicionarVacina(String idOuTag, Vacina vacina) {
         if (vacina == null) {
@@ -190,8 +190,23 @@ public class ProntuarioService {
         // Calcula o status sanitário real via regra de negócio
         vacina.setStatus(petStoryService.calcularStatusVacina(vacina.getDataReforco()));
 
-        // Insere na lista do pet (no início, para ordem cronológica decrescente)
+        // Se a lista do pet em memória estiver vazia, sincroniza com o histórico do banco antes de adicionar
         List<Vacina> lista = vacinasPorPet.computeIfAbsent(petId, k -> new CopyOnWriteArrayList<>());
+        if (lista.isEmpty()) {
+            carregarVacinasDoBanco(petId, lista);
+        }
+
+        // Persiste no banco de dados relacional Supabase PostgreSQL em tempo real
+        try {
+            JsonObject salvoDb = supabaseClient.salvarVacinaNoBanco(petId, vacina);
+            if (salvoDb != null && salvoDb.has("id") && !salvoDb.get("id").isJsonNull()) {
+                vacina.setId(salvoDb.get("id").getAsString());
+            }
+        } catch (Exception e) {
+            System.err.println("[ProntuarioService] Aviso ao persistir vacina no Supabase: " + e.getMessage());
+        }
+
+        // Insere na lista do pet (no início, para ordem cronológica decrescente)
         lista.add(0, vacina);
 
         System.out.println("[ProntuarioService] Vacina registrada com sucesso para o pet " + petId + ": " + vacina.getNomeVacina());
@@ -200,14 +215,84 @@ public class ProntuarioService {
 
     /**
      * Retorna a lista atualizada de vacinas do pet com status recalculado.
+     * Caso o cache em memória para o pet esteja vazio, consulta o banco Supabase
+     * PostgreSQL em tempo real para carregar o histórico vacinal do animal.
      */
     public List<Vacina> listarVacinas(String idOuTag) {
         String petId = resolverPetId(idOuTag);
         List<Vacina> lista = vacinasPorPet.computeIfAbsent(petId, k -> new CopyOnWriteArrayList<>());
+
+        // Se a lista em memória estiver vazia, carrega as vacinas reais persistidas no Supabase
+        if (lista.isEmpty()) {
+            carregarVacinasDoBanco(petId, lista);
+        }
+
         for (Vacina v : lista) {
             v.setStatus(petStoryService.calcularStatusVacina(v.getDataReforco()));
         }
         return Collections.unmodifiableList(lista);
+    }
+
+    /**
+     * Sincroniza e popula a lista de vacinas de um pet a partir da tabela 'vacinas' do Supabase.
+     */
+    private void carregarVacinasDoBanco(String petId, List<Vacina> destino) {
+        try {
+            List<JsonObject> vacinasDb = supabaseClient.buscarVacinasPorPetId(petId);
+            if (vacinasDb != null && !vacinasDb.isEmpty()) {
+                for (JsonObject obj : vacinasDb) {
+                    Vacina v = converterJsonParaVacina(obj, petId);
+                    if (v != null) {
+                        destino.add(v);
+                    }
+                }
+                System.out.println("[ProntuarioService] " + destino.size() + " vacina(s) carregada(s) do Supabase para o pet " + petId);
+            }
+        } catch (Exception e) {
+            System.err.println("[ProntuarioService] Aviso ao carregar vacinas do banco para o pet " + petId + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * Converte um registro JsonObject retornado pelo Supabase no modelo de domínio Vacina.
+     */
+    private Vacina converterJsonParaVacina(JsonObject obj, String fallbackPetId) {
+        if (obj == null) return null;
+        try {
+            String id = obj.has("id") && !obj.get("id").isJsonNull() ? obj.get("id").getAsString() : "vax-" + UUID.randomUUID();
+            String petId = obj.has("pet_id") && !obj.get("pet_id").isJsonNull() ? obj.get("pet_id").getAsString() : fallbackPetId;
+            String nome = obj.has("nome_vacina") && !obj.get("nome_vacina").isJsonNull() ? obj.get("nome_vacina").getAsString() :
+                         (obj.has("nome") && !obj.get("nome").isJsonNull() ? obj.get("nome").getAsString() : "Vacina");
+            String lote = obj.has("laboratorio_lote") && !obj.get("laboratorio_lote").isJsonNull() ? obj.get("laboratorio_lote").getAsString() :
+                         (obj.has("lote") && !obj.get("lote").isJsonNull() ? obj.get("lote").getAsString() : "Lote Padrão");
+            String vet = obj.has("veterinario_crmv") && !obj.get("veterinario_crmv").isJsonNull() ? obj.get("veterinario_crmv").getAsString() :
+                        (obj.has("veterinarioResponsavel") && !obj.get("veterinarioResponsavel").isJsonNull() ? obj.get("veterinarioResponsavel").getAsString() : "CRMV-SP 38.412");
+
+            LocalDate apl = null;
+            if (obj.has("data_aplicacao") && !obj.get("data_aplicacao").isJsonNull()) {
+                apl = LocalDate.parse(obj.get("data_aplicacao").getAsString().substring(0, 10));
+            } else if (obj.has("dataAplicacao") && !obj.get("dataAplicacao").isJsonNull()) {
+                apl = LocalDate.parse(obj.get("dataAplicacao").getAsString().substring(0, 10));
+            } else {
+                apl = LocalDate.now();
+            }
+
+            LocalDate ref = null;
+            if (obj.has("data_reforco") && !obj.get("data_reforco").isJsonNull()) {
+                ref = LocalDate.parse(obj.get("data_reforco").getAsString().substring(0, 10));
+            } else if (obj.has("dataReforco") && !obj.get("dataReforco").isJsonNull()) {
+                ref = LocalDate.parse(obj.get("dataReforco").getAsString().substring(0, 10));
+            } else {
+                ref = apl.plusYears(1);
+            }
+
+            Vacina v = new Vacina(id, petId, nome, apl, ref, lote, vet);
+            v.setStatus(petStoryService.calcularStatusVacina(ref));
+            return v;
+        } catch (Exception e) {
+            System.err.println("[ProntuarioService] Erro ao converter JSON de vacina: " + e.getMessage());
+            return null;
+        }
     }
 
     /**

@@ -247,6 +247,26 @@ public class PetStoryHttpServerTest {
     }
 
     @Test
+    @DisplayName("GET /api/pets/PST-1428/prontuario deve carregar vacinas do Bolinha persistidas no Supabase")
+    public void testObterProntuarioBolinhaSupabase() throws Exception {
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/pets/PST-1428/prontuario"))
+                .GET()
+                .build();
+
+        HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+
+        assertEquals(200, resp.statusCode());
+        JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
+        assertTrue(json.get("sucesso").getAsBoolean());
+        assertEquals("Bolinha", json.getAsJsonObject("pet").get("nome").getAsString());
+        assertEquals("PST-1428", json.getAsJsonObject("pet").get("tag").getAsString());
+        // Confirma que carregou as vacinas persistidas no banco
+        assertFalse(json.getAsJsonArray("vacinas").isEmpty());
+        assertTrue(json.has("lembretes"));
+    }
+
+    @Test
     @DisplayName("POST /api/vacinas deve cadastrar nova vacina e refletir no prontuário do Bolinha")
     public void testCadastrarVacinaBolinha() throws Exception {
         JsonObject body = new JsonObject();

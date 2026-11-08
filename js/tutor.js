@@ -280,6 +280,16 @@ async function renderTutorPortal(tutor, pet, tagCode, isThorDemo = false) {
     }
   }
 
+  // Garante estado visual de carregamento sem flicker
+  if (vaxList) {
+    vaxList.innerHTML = `
+      <div class="vax-empty-state" style="padding: 1.5rem; text-align: center;">
+        <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--teal-primary, #0d9488); font-size: 1.5rem; margin-bottom: 0.5rem;"></i>
+        <p style="color: var(--text-muted, #64748b); font-size: 0.85rem; margin: 0;">Sincronizando carteirinha com o banco de dados...</p>
+      </div>
+    `;
+  }
+
   // Carregamento real de vacinas e lembretes via API Java
   let listaVacinas = [];
   let listaLembretes = [];

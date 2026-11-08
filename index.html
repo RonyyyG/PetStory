@@ -356,14 +356,21 @@
          TELA 3: PORTAL CLÍNICO DO VETERINÁRIO (LEITOR QR / CÓDIGO DA TAG + OTP)
          ==================================================================== -->
     <section id="screen-vet-scan" class="screen-view">
-      <div class="section-header-block">
-        <span class="level-badge level-clinic">
-          <i class="fa-solid fa-user-doctor"></i> Nível 2: Acesso Clínico Autorizado
-        </span>
-        <h1 class="section-title">Validação e Acesso ao Prontuário Unificado</h1>
-        <p class="section-desc">
-          Aproxime a Tag Inteligente NFC da coleira, aponte a câmera para o QR Code ou insira o código alfanumérico para carregar o histórico médico instantâneo.
-        </p>
+      <div class="section-header-block" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <span class="level-badge level-clinic">
+            <i class="fa-solid fa-user-doctor"></i> Nível 2: Acesso Clínico Autorizado
+          </span>
+          <h1 class="section-title">Validação e Acesso ao Prontuário Unificado</h1>
+          <p class="section-desc">
+            Aproxime a Tag Inteligente NFC da coleira, aponte a câmera para o QR Code ou insira o código alfanumérico para carregar o histórico médico instantâneo.
+          </p>
+        </div>
+        <div style="margin-top: 0.5rem;">
+          <button type="button" class="btn-secondary" style="font-size: 0.85rem; padding: 0.65rem 1rem; border-radius: var(--radius-sm);" onclick="encerrarSessaoVet()" title="Encerrar plantão veterinário e retornar ao login">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i> Encerrar Plantão / Sair
+          </button>
+        </div>
       </div>
 
       <div class="vet-portal-grid">
@@ -434,20 +441,20 @@
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-              <span style="font-size: 0.78rem; color: var(--text-muted);">Sugestões de teste rápido (Tag + OTP):</span>
+              <span style="font-size: 0.78rem; color: var(--text-muted);">Sugestões de teste rápido (preenche a Tag do animal):</span>
             </div>
             
             <div class="quick-chips-wrapper">
-              <button type="button" class="chip-btn" data-code="PST-9921" data-otp="849201">
-                <i class="fa-solid fa-dog"></i> Thor • PST-9921 (OTP: 849201)
+              <button type="button" class="chip-btn" data-code="PST-9921">
+                <i class="fa-solid fa-dog"></i> Thor • PST-9921
               </button>
-              <button type="button" class="chip-btn" data-code="PST-1428" data-otp="849201">
-                <i class="fa-solid fa-shield-dog"></i> Bolinha • PST-1428 (OTP: 849201)
+              <button type="button" class="chip-btn" data-code="PST-1428">
+                <i class="fa-solid fa-shield-dog"></i> Bolinha • PST-1428
               </button>
-              <button type="button" class="chip-btn" data-code="PST-4022" data-otp="123456">
-                <i class="fa-solid fa-cat"></i> Luna • PST-4022 (OTP: 123456)
+              <button type="button" class="chip-btn" data-code="PST-4022">
+                <i class="fa-solid fa-cat"></i> Luna • PST-4022
               </button>
-              <button type="button" class="chip-btn" data-code="981098108429182" data-otp="849201">
+              <button type="button" class="chip-btn" data-code="981098108429182">
                 <i class="fa-solid fa-microchip"></i> Microchip ISO
               </button>
             </div>
@@ -540,11 +547,11 @@
         <div class="prontuario-header-grid">
           <!-- Dog Photo -->
           <div class="pet-hero-photo-wrap">
-            <img src="https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=400&q=80" 
+            <img src="data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' width='100%25' height='100%25'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23e2e8f0'/%3E%3Cstop offset='100%25' stop-color='%23cbd5e1'/%3E%3C/linearGradient%3E%3ClinearGradient id='paw' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300d2ad'/%3E%3Cstop offset='100%25' stop-color='%2300a887'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='120' height='120' rx='24' fill='url(%23bg)'/%3E%3Ccircle cx='60' cy='68' r='24' fill='url(%23paw)'/%3E%3Cellipse cx='38' cy='44' rx='9' ry='13' transform='rotate(-20 38 44)' fill='url(%23paw)'/%3E%3Cellipse cx='53' cy='36' rx='9' ry='14' transform='rotate(-6 53 36)' fill='url(%23paw)'/%3E%3Cellipse cx='67' cy='36' rx='9' ry='14' transform='rotate(6 67 36)' fill='url(%23paw)'/%3E%3Cellipse cx='82' cy='44' rx='9' ry='13' transform='rotate(20 82 44)' fill='url(%23paw)'/%3E%3C/svg%3E" 
                  alt="Foto do Paciente" 
                  class="pet-hero-photo"
                  id="prontuario-pet-photo"
-                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23132034%22/><text x=%2250%22 y=%2260%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22%2300d2ad%22>🐕</text></svg>'">
+                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23e2e8f0%22/><text x=%2250%22 y=%2260%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22%2300d2ad%22>🐾</text></svg>'">
             <span class="pet-status-online">TAG ATIVA</span>
           </div>
 
@@ -599,8 +606,11 @@
             <button type="button" class="btn-primary" id="btn-new-prescription" onclick="abrirModalEmitirReceita()">
               <i class="fa-solid fa-prescription"></i> Emitir Receita
             </button>
-            <button type="button" class="btn-secondary" onclick="switchScreen('vet-scan')">
+            <button type="button" class="btn-secondary" onclick="finalizarAtendimentoClinico()" title="Concluir consulta e voltar ao leitor de tags">
               <i class="fa-solid fa-arrow-left"></i> Nova Leitura
+            </button>
+            <button type="button" class="btn-danger-outline" style="font-size: 0.8rem; padding: 0.45rem 0.8rem;" onclick="encerrarSessaoVet()" title="Finalizar plantão e voltar ao login">
+              <i class="fa-solid fa-arrow-right-from-bracket"></i> Sair do Plantão
             </button>
           </div>
         </div>
@@ -1104,7 +1114,7 @@
             </div>
             <div class="form-group">
               <label class="form-label">Peso Atual na Balança (kg)</label>
-              <input type="text" class="form-input" id="note-evolution-peso" value="32.8" style="padding-left: 1rem;">
+              <input type="text" class="form-input" id="note-evolution-peso" placeholder="Ex: 12.5" style="padding-left: 1rem;">
             </div>
           </div>
 
@@ -1276,10 +1286,10 @@
           <!-- Smart Tag Hardware Widget -->
           <div class="collar-tag-widget">
             <div class="collar-photo-wrap">
-              <img src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=600&q=80" 
+              <img src="data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' width='100%25' height='100%25'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23e2e8f0'/%3E%3Cstop offset='100%25' stop-color='%23cbd5e1'/%3E%3C/linearGradient%3E%3ClinearGradient id='paw' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300d2ad'/%3E%3Cstop offset='100%25' stop-color='%2300a887'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='120' height='120' rx='24' fill='url(%23bg)'/%3E%3Ccircle cx='60' cy='68' r='24' fill='url(%23paw)'/%3E%3Cellipse cx='38' cy='44' rx='9' ry='13' transform='rotate(-20 38 44)' fill='url(%23paw)'/%3E%3Cellipse cx='53' cy='36' rx='9' ry='14' transform='rotate(-6 53 36)' fill='url(%23paw)'/%3E%3Cellipse cx='67' cy='36' rx='9' ry='14' transform='rotate(6 67 36)' fill='url(%23paw)'/%3E%3Cellipse cx='82' cy='44' rx='9' ry='13' transform='rotate(20 82 44)' fill='url(%23paw)'/%3E%3C/svg%3E" 
                    alt="Foto do Pet" 
                    id="tutor-pet-avatar-img"
-                   onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23132034%22/><text x=%2250%22 y=%2260%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22%2300d2ad%22>🏷️</text></svg>'">
+                   onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23e2e8f0%22/><text x=%2250%22 y=%2260%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22%2300d2ad%22>🏷️</text></svg>'">
               <span class="tag-active-pill">
                 <i class="fa-solid fa-circle-check"></i> TAG CONECTADA
               </span>
@@ -1356,10 +1366,11 @@
 
         <div class="public-tag-card">
           <!-- Pet Avatar -->
-          <img src="https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80" 
-               alt="Thor" 
+          <img src="data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' width='100%25' height='100%25'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23e2e8f0'/%3E%3Cstop offset='100%25' stop-color='%23cbd5e1'/%3E%3C/linearGradient%3E%3ClinearGradient id='paw' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300d2ad'/%3E%3Cstop offset='100%25' stop-color='%2300a887'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='120' height='120' rx='24' fill='url(%23bg)'/%3E%3Ccircle cx='60' cy='68' r='24' fill='url(%23paw)'/%3E%3Cellipse cx='38' cy='44' rx='9' ry='13' transform='rotate(-20 38 44)' fill='url(%23paw)'/%3E%3Cellipse cx='53' cy='36' rx='9' ry='14' transform='rotate(-6 53 36)' fill='url(%23paw)'/%3E%3Cellipse cx='67' cy='36' rx='9' ry='14' transform='rotate(6 67 36)' fill='url(%23paw)'/%3E%3Cellipse cx='82' cy='44' rx='9' ry='13' transform='rotate(20 82 44)' fill='url(%23paw)'/%3E%3C/svg%3E" 
+               alt="Foto do Pet" 
                class="public-pet-avatar"
-               onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23132034%22/><text x=%2250%22 y=%2260%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22%2300d2ad%22>🐕</text></svg>'">
+               id="public-tag-photo"
+               onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23e2e8f0%22/><text x=%2250%22 y=%2260%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22%2300d2ad%22>🐕</text></svg>'">
           
           <h1 class="public-tag-title">Você encontrou o Thor? 🐶❤️</h1>
           <p class="public-tag-subtitle">Golden Retriever Dócil • Ele tem uma família com saudades!</p>
@@ -1405,107 +1416,7 @@
 
   </main>
 
-  <!-- ====================================================================
-       BOTÃO BEM ESCONDIDO (DISCREET DEMO SWITCHER)
-       "deixe um botao bem escondido, pra ir pras outras telas"
-       ==================================================================== -->
-  <div class="secret-nav-dock">
-    
-    <!-- Secret Menu Panel that Expands -->
-    <div class="secret-menu-panel" id="secret-menu-panel">
-      <div class="secret-menu-header">
-        <h5><i class="fa-solid fa-layer-group"></i> Navegação de Telas Demo</h5>
-        <button class="secret-menu-close" id="secret-menu-close" title="Fechar menu">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      </div>
 
-      <div class="secret-options-list">
-        <!-- Option 1: Login -->
-        <button type="button" class="secret-nav-item" data-target="login">
-          <div class="secret-nav-icon">
-            <i class="fa-solid fa-right-to-bracket"></i>
-          </div>
-          <div class="secret-nav-text">
-            <h6>1. Login Unificado</h6>
-            <span>Tutor ou Médico-Veterinário (CRMV)</span>
-          </div>
-          <span class="secret-shortcut-badge">[1]</span>
-        </button>
-
-        <!-- Option 2: Cadastro Wizard -->
-        <button type="button" class="secret-nav-item" data-target="cadastro">
-          <div class="secret-nav-icon">
-            <i class="fa-solid fa-address-card"></i>
-          </div>
-          <div class="secret-nav-text">
-            <h6>2. Cadastro em 3 Etapas</h6>
-            <span>Dono + Ficha do Pet + Tag Gerada</span>
-          </div>
-          <span class="secret-shortcut-badge">[2]</span>
-        </button>
-
-        <!-- Option 3: Vet Scanner Screen -->
-        <button type="button" class="secret-nav-item active" data-target="vet-scan">
-          <div class="secret-nav-icon">
-            <i class="fa-solid fa-qrcode"></i>
-          </div>
-          <div class="secret-nav-text">
-            <h6>3. Validação Veterinária</h6>
-            <span>Leitor QR / Tag + OTP 6 Dígitos</span>
-          </div>
-          <span class="secret-shortcut-badge">[3]</span>
-        </button>
-
-        <!-- Option 4: Full Clinical Record -->
-        <button type="button" class="secret-nav-item" data-target="prontuario">
-          <div class="secret-nav-icon">
-            <i class="fa-solid fa-notes-medical"></i>
-          </div>
-          <div class="secret-nav-text">
-            <h6>4. Prontuário Completo</h6>
-            <span>Histórico clínico do paciente (Pós-OTP)</span>
-          </div>
-          <span class="secret-shortcut-badge">[4]</span>
-        </button>
-
-        <!-- Option 5: Pet Parent (Tutor) Dashboard -->
-        <button type="button" class="secret-nav-item" data-target="tutor">
-          <div class="secret-nav-icon">
-            <i class="fa-solid fa-paw"></i>
-          </div>
-          <div class="secret-nav-text">
-            <h6>5. Portal do Dono (Tutor)</h6>
-            <span>Vacinas, alergias e gerador OTP</span>
-          </div>
-          <span class="secret-shortcut-badge">[5]</span>
-        </button>
-
-        <!-- Option 6: Public Smart Tag (Lost Dog) -->
-        <button type="button" class="secret-nav-item" data-target="public-tag">
-          <div class="secret-nav-icon">
-            <i class="fa-solid fa-tag"></i>
-          </div>
-          <div class="secret-nav-text">
-            <h6>6. Tag Pública da Coleira</h6>
-            <span>Pet Encontrado na rua / WhatsApp</span>
-          </div>
-          <span class="secret-shortcut-badge">[6]</span>
-        </button>
-      </div>
-
-      <div style="margin-top: 0.8rem; padding-top: 0.6rem; border-top: 1px solid var(--border-glass); font-size: 0.7rem; color: var(--text-muted); text-align: center;">
-        Dica: Você também pode usar as teclas <strong>1 a 6</strong> no teclado!
-      </div>
-    </div>
-
-    <!-- The discreet trigger button (Sleek minimalist capsule) -->
-    <button class="secret-trigger-btn" id="secret-trigger-btn" title="Alternar entre as telas do protótipo PetStory">
-      <span class="secret-trigger-dot"></span>
-      <span>Alternar Telas</span>
-      <i class="fa-solid fa-sliders" style="font-size: 0.8rem; opacity: 0.8;"></i>
-    </button>
-  </div>
 
 
   <!-- ====================================================================
@@ -1571,18 +1482,18 @@
         <div class="form-row-2">
           <div class="form-group">
             <label class="form-label">Freq. Cardíaca (bpm)</label>
-            <input type="number" id="input-modal-fc" class="form-input" value="88" required>
+            <input type="number" id="input-modal-fc" class="form-input" placeholder="Ex: 88" required>
           </div>
           <div class="form-group">
             <label class="form-label">Freq. Respiratória (mpm)</label>
-            <input type="number" id="input-modal-fr" class="form-input" value="22" required>
+            <input type="number" id="input-modal-fr" class="form-input" placeholder="Ex: 22" required>
           </div>
         </div>
 
         <div class="form-row-2">
           <div class="form-group">
             <label class="form-label">Temperatura Retal (°C)</label>
-            <input type="number" step="0.1" id="input-modal-temp" class="form-input" value="38.4" required>
+            <input type="number" step="0.1" id="input-modal-temp" class="form-input" placeholder="Ex: 38.4" required>
           </div>
           <div class="form-group">
             <label class="form-label">Escore Corporal (1 a 9)</label>
@@ -1602,7 +1513,7 @@
 
         <div class="form-group">
           <label class="form-label">Peso Atual na Balança (kg)</label>
-          <input type="number" step="0.1" id="input-modal-peso" class="form-input" value="32.8" required>
+          <input type="number" step="0.1" id="input-modal-peso" class="form-input" placeholder="Ex: 12.5" required>
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 0.8rem; margin-top: 1.5rem;">
@@ -1638,12 +1549,12 @@
       <form id="form-modal-vacina" onsubmit="salvarModalVacina(event)">
         <div class="form-group">
           <label class="form-label">Nome da Vacina</label>
-          <input type="text" id="input-vac-nome" class="form-input" placeholder="Ex: V10 Polivalente Canina" value="V10 Polivalente Canina" required>
+          <input type="text" id="input-vac-nome" class="form-input" placeholder="Ex: V10 Polivalente Canina" required>
         </div>
 
         <div class="form-group">
           <label class="form-label">Fabricante & Lote</label>
-          <input type="text" id="input-vac-lote" class="form-input" placeholder="Ex: Zoetis • Lote 9410-B" value="Zoetis • Lote 9410-B" required>
+          <input type="text" id="input-vac-lote" class="form-input" placeholder="Ex: Zoetis • Lote 9410-B" required>
         </div>
 
         <div class="form-row-2">
@@ -1748,7 +1659,7 @@
       <form id="form-modal-cirurgia" onsubmit="salvarModalCirurgia(event)">
         <div class="form-group">
           <label class="form-label">Procedimento Cirúrgico / Clínico</label>
-          <input type="text" id="input-cirurgia-nome" class="form-input" placeholder="Ex: Limpeza de Tártaro (Tartarectomia)" value="Limpeza de Tártaro (Tartarectomia)" required>
+          <input type="text" id="input-cirurgia-nome" class="form-input" placeholder="Ex: Limpeza de Tártaro (Tartarectomia)" required>
         </div>
 
         <div class="form-row-2">
@@ -1758,7 +1669,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">Protocolo / Cirurgião</label>
-            <input type="text" id="input-cirurgia-cirurgiao" class="form-input" value="Dr. Ricardo (CRMV-SP 38.412)" required>
+            <input type="text" id="input-cirurgia-cirurgiao" class="form-input" placeholder="Ex: Dr. Ricardo (CRMV-SP 38.412)" required>
           </div>
         </div>
 
@@ -1806,7 +1717,7 @@
         <div class="form-row-2">
           <div class="form-group">
             <label class="form-label">Laboratório Diagnóstico</label>
-            <input type="text" id="input-exame-lab" class="form-input" placeholder="Ex: LabVet Diagnósticos" value="LabVet Diagnósticos" required>
+            <input type="text" id="input-exame-lab" class="form-input" placeholder="Ex: LabVet Diagnósticos" required>
           </div>
           <div class="form-group">
             <label class="form-label">Data de Realização</label>

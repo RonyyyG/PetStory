@@ -52,6 +52,9 @@ public class Vacina {
     /** Nome e CRMV do médico-veterinário responsável pela aplicação */
     private String veterinarioResponsavel;
 
+    /** Status sanitário calculado: "Em Dia", "Próximo do Reforço", "Atrasada" */
+    private String status;
+
     // ========================================================================
     // CONSTRUTORES
     // ========================================================================
@@ -129,6 +132,14 @@ public class Vacina {
 
     public void setVeterinarioResponsavel(String veterinarioResponsavel) {
         this.veterinarioResponsavel = veterinarioResponsavel;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     @Override

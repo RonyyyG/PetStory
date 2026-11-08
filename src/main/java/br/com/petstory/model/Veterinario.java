@@ -21,6 +21,9 @@ public class Veterinario {
     private String crmv;
     private String clinica;
     private String especialidade;
+    private String email;
+    private String senhaHash;
+    private Boolean ativo;
     private LocalDateTime createdAt;
 
     public Veterinario() {
@@ -32,6 +35,16 @@ public class Veterinario {
         this.crmv = crmv;
         this.clinica = clinica;
         this.especialidade = especialidade;
+    }
+
+    public Veterinario(String id, String nome, String crmv, String clinica, String especialidade, String email, Boolean ativo) {
+        this.id = id;
+        this.nome = nome;
+        this.crmv = crmv;
+        this.clinica = clinica;
+        this.especialidade = especialidade;
+        this.email = email;
+        this.ativo = ativo;
     }
 
     public String getId() {
@@ -72,6 +85,30 @@ public class Veterinario {
 
     public void setEspecialidade(String especialidade) {
         this.especialidade = especialidade;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getSenhaHash() {
+        return senhaHash;
+    }
+
+    public void setSenhaHash(String senhaHash) {
+        this.senhaHash = senhaHash;
+    }
+
+    public Boolean getAtivo() {
+        return ativo;
+    }
+
+    public void setAtivo(Boolean ativo) {
+        this.ativo = ativo;
     }
 
     public LocalDateTime getCreatedAt() {

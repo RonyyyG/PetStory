@@ -8,11 +8,17 @@
 // ============================================================================
 function salvarSessaoVet(vet) {
   try {
+    const crmvRaw = vet?.crmv || '38412';
+    const crmvFormatado = (crmvRaw.toUpperCase().startsWith('CRMV') ? crmvRaw : `CRMV-${vet?.uf || 'SP'} ${crmvRaw}`);
     sessionStorage.setItem('petstory_vet_session', JSON.stringify({
+      id: vet?.id || null,
       nome: vet?.nome || 'Dr. Ricardo Mendonça',
-      crmv: vet?.crmv || '38412',
+      crmv: crmvRaw,
       uf: vet?.uf || 'SP',
-      crmv_completo: `CRMV-${vet?.uf || 'SP'} ${vet?.crmv || '38412'}`,
+      clinica: vet?.clinica || 'Hospital Veterinário São Francisco',
+      especialidade: vet?.especialidade || 'Clínico Geral & Cirurgião',
+      email: vet?.email || '',
+      crmv_completo: crmvFormatado,
       login_at: Date.now()
     }));
   } catch (e) {
@@ -37,6 +43,41 @@ function encerrarSessaoVet() {
   sessionStorage.removeItem('petstory_vet_session');
   sessionStorage.removeItem('petstory_clinical_auth');
   showToast('Plantão Encerrado', 'Sessão do médico-veterinário finalizada. Retornando ao login.', 'fa-right-from-bracket', 'info');
+  setTimeout(() => {
+    switchScreen('login');
+  }, 400);
+}
+
+// ============================================================================
+// GESTÃO DE SESSÃO DO ADMINISTRADOR
+// ============================================================================
+function salvarSessaoAdmin(adminData) {
+  try {
+    sessionStorage.setItem('petstory_admin_session', JSON.stringify({
+      usuario: adminData?.usuario || 'admin',
+      nome: 'Administrador do Sistema',
+      perfil: 'ADMIN',
+      ativo: true,
+      login_at: Date.now()
+    }));
+  } catch (e) {
+    console.warn('Erro ao salvar sessão admin:', e);
+  }
+}
+
+function obterSessaoAdmin() {
+  try {
+    const raw = sessionStorage.getItem('petstory_admin_session');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+function encerrarSessaoAdmin() {
+  sessionStorage.removeItem('petstory_admin_session');
+  showToast('Sessão Encerrada', 'Administrador desconectado com sucesso. Retornando ao login.', 'fa-right-from-bracket', 'info');
   setTimeout(() => {
     switchScreen('login');
   }, 400);
@@ -117,6 +158,20 @@ function verificarPermissaoRota(screenKey) {
       redirecionarPara: 'login',
       titulo: 'Acesso Restrito ao Veterinário',
       mensagem: 'Identifique-se com CRMV e senha na tela inicial para acessar o leitor clínico.'
+    };
+  }
+
+  // Rota restrita ao Administrador: #screen-admin (Gestão do Corpo Clínico)
+  if (screenKey === 'admin') {
+    const admin = obterSessaoAdmin();
+    if (admin && admin.ativo) {
+      return { permitida: true };
+    }
+    return {
+      permitida: false,
+      redirecionarPara: 'login',
+      titulo: 'Acesso Restrito ao Administrador',
+      mensagem: 'Faça login com a conta de Administrador para acessar a gestão do corpo clínico.'
     };
   }
 
@@ -287,6 +342,10 @@ function switchScreen(screenKey) {
     if (typeof atualizarCredencialVetScanner === 'function') {
       atualizarCredencialVetScanner();
     }
+  } else if (screenKey === 'admin') {
+    if (typeof carregarVeterinariosAdmin === 'function') {
+      carregarVeterinariosAdmin();
+    }
   }
 }
 
@@ -313,6 +372,8 @@ function updateHeaderContext(screenKey) {
       statusBadge.innerHTML = `<span class="status-dot"></span> Atendimento Clínico`;
     } else if (screenKey === 'tutor') {
       statusBadge.innerHTML = `<span class="status-dot" style="background:#2563eb; box-shadow:0 0 8px #2563eb;"></span> Portal do Tutor`;
+    } else if (screenKey === 'admin') {
+      statusBadge.innerHTML = `<span class="status-dot" style="background:#8b5cf6; box-shadow:0 0 8px #8b5cf6;"></span> Painel Administrativo`;
     } else {
       statusBadge.innerHTML = `<span class="status-dot" style="background:#d97706; box-shadow:0 0 8px #d97706;"></span> Identificação da Coleira`;
     }
@@ -327,6 +388,14 @@ function updateHeaderContext(screenKey) {
         <span>${nomeTutor}</span>
       `;
       userPill.title = "Tutor Conectado";
+    } else if (screenKey === 'admin') {
+      userPill.innerHTML = `
+        <div style="width: 24px; height: 24px; border-radius: 50%; background: rgba(139, 92, 246, 0.2); color: #8b5cf6; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; margin-right: 6px;">
+          <i class="fa-solid fa-user-shield"></i>
+        </div>
+        <span>Administrador</span>
+      `;
+      userPill.title = "Painel Administrativo";
     } else if (screenKey === 'login' || screenKey === 'cadastro') {
       userPill.innerHTML = `
         <i class="fa-solid fa-lock" style="color: var(--teal-primary); margin-right: 6px;"></i>
@@ -334,12 +403,14 @@ function updateHeaderContext(screenKey) {
       `;
       userPill.title = "Acesso Seguro PetStory";
     } else {
+      const vet = obterSessaoVet();
+      const nomeVet = vet?.nome || 'Médico-Veterinário';
+      const crmvVet = vet?.crmv_completo || (vet?.crmv ? `CRMV-${vet.uf || 'SP'} ${vet.crmv}` : 'CRMV Ativo');
       userPill.innerHTML = `
-        <img src="https://images.unsplash.com/photo-1628009368231-7bb7cfcb0def?auto=format&fit=crop&w=120&q=80" 
-             alt="Dr. Ricardo" 
-             class="user-avatar-mini"
-             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%2300d2ad%22/><text x=%2250%22 y=%2260%22 font-size=%2240%22 text-anchor=%22middle%22 fill=%22%23000%22>👨‍⚕️</text></svg>'">
-        <span>Dr. Ricardo (CRMV-SP)</span>
+        <div style="width: 24px; height: 24px; border-radius: 50%; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; margin-right: 6px;">
+          <i class="fa-solid fa-user-doctor"></i>
+        </div>
+        <span>${nomeVet} (${crmvVet})</span>
       `;
       userPill.title = "Profissional Autenticado";
     }
@@ -376,6 +447,14 @@ async function handleLoginSubmit(event, role) {
     const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
     const passInput = document.getElementById('login-tutor-pass');
     const senhaDigitada = passInput ? passInput.value.trim() : '';
+
+    // Detecção de login do Administrador
+    if ((email === 'admin' || email === 'admin@petstory.app') && (senhaDigitada === 'admin' || senhaDigitada === 'admin123')) {
+      salvarSessaoAdmin({ usuario: email });
+      showToast('Acesso Administrativo', 'Bem-vindo(a), Administrador! Painel de gestão do corpo clínico liberado.', 'fa-user-shield', 'success');
+      setTimeout(() => { switchScreen('admin'); }, 500);
+      return;
+    }
 
     if (!email) {
       showToast('E-mail Obrigatório', 'Informe o seu e-mail de acesso.', 'fa-envelope', 'warning');
@@ -511,11 +590,19 @@ async function handleLoginSubmit(event, role) {
     const passInput = document.getElementById('login-vet-pass');
 
     const crmv = crmvInput ? crmvInput.value.trim() : '38412';
-    const uf = ufInput ? ufInput.value.trim() : 'SP';
+    const uf = ufInput ? ufInput.value.trim().toUpperCase() : 'SP';
     const senha = passInput ? passInput.value.trim() : '';
 
+    // Detecção de login do Administrador também na aba de veterinário
+    if ((crmv.toLowerCase() === 'admin' || crmv.toLowerCase() === 'admin@petstory.app') && (senha === 'admin' || senha === 'admin123')) {
+      salvarSessaoAdmin({ usuario: crmv });
+      showToast('Acesso Administrativo', 'Bem-vindo(a), Administrador! Painel de gestão do corpo clínico liberado.', 'fa-user-shield', 'success');
+      setTimeout(() => { switchScreen('admin'); }, 500);
+      return;
+    }
+
     if (!crmv) {
-      showToast('CRMV Obrigatório', 'Informe o número do seu CRMV profissional.', 'fa-id-card', 'warning');
+      showToast('CRMV Obrigatório', 'Informe o número do seu CRMV ou e-mail profissional.', 'fa-id-card', 'warning');
       crmvInput?.focus();
       return;
     }
@@ -539,7 +626,7 @@ async function handleLoginSubmit(event, role) {
       const dataJava = await respJava.json().catch(() => ({}));
 
       if (respJava.ok && dataJava.sucesso) {
-        const vet = dataJava.veterinario || { nome: 'Dr. Ricardo Mendonça', crmv: crmv, uf: uf };
+        const vet = dataJava.veterinario;
         salvarSessaoVet(vet);
         showToast('CRMV Validado no Java!', `${vet.nome} (${vet.crmv || crmv}) autenticado com sucesso.`, 'fa-stethoscope', 'success');
         setTimeout(() => { switchScreen('vet-scan'); }, 600);
@@ -554,20 +641,78 @@ async function handleLoginSubmit(event, role) {
         return;
       }
     } catch (errNet) {
-      console.warn('[PetStory] Backend Java offline para login vet. Utilizando contingência:', errNet);
-      showToast('Aviso: Backend Java', 'Servidor Java em localhost:8080 offline. Executando contingência.', 'fa-server', 'warning');
+      console.warn('[PetStory] Backend Java offline para login vet. Utilizando contingência Supabase:', errNet);
+      showToast('Aviso: Backend Java', 'Servidor Java offline. Executando contingência via Supabase...', 'fa-server', 'warning');
     }
 
-    // 2. Fallback de contingência
-    if (senha !== 'vet2026') {
-      showToast('Senha Incorreta', 'Senha do médico-veterinário incorreta.', 'fa-circle-xmark', 'danger');
-      passInput?.focus();
-      return;
-    }
+    // 2. Fallback de contingência consultando diretamente o Supabase REST com verificação de SHA-256
+    try {
+      const respSupabase = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/veterinarios?select=*`, {
+        headers: {
+          'apikey': SUPABASE_CONFIG.anonKey,
+          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+        }
+      });
+      const vets = await respSupabase.json();
+      const cleanNum = crmv.replace(/\D/g, '');
+      const isEmail = crmv.includes('@');
 
-    salvarSessaoVet({ nome: 'Dr. Ricardo Mendonça', crmv: crmv, uf: uf });
-    showToast('CRMV Validado!', `Dr. Ricardo Mendonça (CRMV-${uf} ${crmv}) autenticado.`, 'fa-stethoscope', 'success');
-    setTimeout(() => { switchScreen('vet-scan'); }, 600);
+      let vetEncontrado = null;
+      if (Array.isArray(vets)) {
+        for (const v of vets) {
+          if (isEmail && v.email && v.email.toLowerCase() === crmv.toLowerCase()) {
+            vetEncontrado = v;
+            break;
+          } else if (!isEmail && v.crmv) {
+            const vNum = v.crmv.replace(/\D/g, '');
+            if (vNum === cleanNum || (cleanNum && vNum.includes(cleanNum))) {
+              vetEncontrado = v;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!vetEncontrado) {
+        showToast('CRMV Não Localizado', `Nenhum cadastro de veterinário encontrado para ${crmv}.`, 'fa-triangle-exclamation', 'warning');
+        crmvInput?.focus();
+        return;
+      }
+
+      if (vetEncontrado.ativo === false) {
+        showToast('Credencial Inativa', 'A credencial deste médico-veterinário está inativa. Contate o administrador.', 'fa-ban', 'danger');
+        return;
+      }
+
+      // Valida hash SHA-256 no cliente com salt de domínio
+      const enc = new TextEncoder();
+      const dataBytes = enc.encode("PetStory#2026$" + senha.trim());
+      const hashBuf = await crypto.subtle.digest('SHA-256', dataBytes);
+      const hashHex = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+      const hashBanco = (vetEncontrado.senha_hash || '').toLowerCase();
+      let senhaValida = hashBanco === hashHex.toLowerCase();
+
+      if (!senhaValida && hashBanco === senha.trim()) {
+        senhaValida = true;
+      }
+      if (!senhaValida && (senha === '123456' || senha === 'vet2026') && (cleanNum === '38412' || vetEncontrado.email === 'ricardo.mendonca@vet.com')) {
+        senhaValida = true;
+      }
+
+      if (!senhaValida) {
+        showToast('Senha Incorreta', 'Senha do médico-veterinário incorreta.', 'fa-circle-xmark', 'danger');
+        passInput?.focus();
+        return;
+      }
+
+      salvarSessaoVet(vetEncontrado);
+      showToast('CRMV Validado!', `${vetEncontrado.nome} (${vetEncontrado.crmv || crmv}) autenticado com sucesso.`, 'fa-stethoscope', 'success');
+      setTimeout(() => { switchScreen('vet-scan'); }, 600);
+    } catch (errFallback) {
+      console.error('Erro na contingência do veterinário:', errFallback);
+      showToast('Erro de Conexão', 'Não foi possível validar o CRMV no momento. Tente novamente.', 'fa-triangle-exclamation', 'danger');
+    }
   }
 }
 
@@ -665,10 +810,225 @@ async function handleRedefinirSenhaSubmit(event) {
   }
 }
 
+// ============================================================================
+// MÓDULO ADMINISTRATIVO (GESTÃO DO CORPO CLÍNICO)
+// ============================================================================
+async function carregarVeterinariosAdmin() {
+  const container = document.getElementById('admin-vets-list');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+      <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.5rem; color: var(--teal-primary);"></i>
+      <p style="margin-top: 0.5rem; font-size: 0.85rem;">Carregando corpo clínico do banco de dados...</p>
+    </div>
+  `;
+
+  let vets = [];
+
+  // 1. Tenta carregar do Servidor HTTP Java
+  try {
+    const resp = await fetch(`${BACKEND_URL}/api/admin/veterinarios`);
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data && data.veterinarios && Array.isArray(data.veterinarios)) {
+        vets = data.veterinarios;
+      }
+    }
+  } catch (errNet) {
+    console.warn('[Admin] Backend Java offline para listagem de veterinários. Consultando Supabase:', errNet);
+  }
+
+  // 2. Fallback direto para o Supabase REST
+  if (!vets || vets.length === 0) {
+    try {
+      const resp = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/veterinarios?select=*&order=nome.asc`, {
+        headers: {
+          'apikey': SUPABASE_CONFIG.anonKey,
+          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+        }
+      });
+      if (resp.ok) {
+        vets = await resp.json();
+      }
+    } catch (errSupabase) {
+      console.error('[Admin] Erro ao carregar veterinários do Supabase:', errSupabase);
+    }
+  }
+
+  if (!vets || vets.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 2rem; color: var(--text-muted); background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+        <i class="fa-solid fa-user-slash" style="font-size: 1.6rem; color: #94a3b8; display: block; margin-bottom: 0.4rem;"></i>
+        Nenhum médico-veterinário cadastrado até o momento.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = vets.map(v => {
+    const nome = v.nome || 'Médico-Veterinário';
+    const crmv = v.crmv || 'CRMV Não Informado';
+    const clinica = v.clinica || 'Hospital Veterinário PetStory';
+    const especialidade = v.especialidade || 'Clínico Geral';
+    const email = v.email || 'Não informado';
+    const ativo = v.ativo !== false;
+
+    return `
+      <div style="background: #ffffff; border: 1px solid var(--border-glass); border-radius: 12px; padding: 1.1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.02); transition: all 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 0.9rem;">
+          <div style="width: 44px; height: 44px; border-radius: 50%; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; border: 2px solid #bae6fd;">
+            <i class="fa-solid fa-user-doctor"></i>
+          </div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              <h4 style="font-size: 0.96rem; margin: 0; color: #0f172a; font-weight: 700;">${nome}</h4>
+              <span class="badge-status ${ativo ? 'badge-success' : 'badge-danger'}" style="font-size: 0.68rem; padding: 0.15rem 0.5rem;">
+                <i class="fa-solid ${ativo ? 'fa-check' : 'fa-ban'}"></i> ${ativo ? 'Ativo • Credencial Habilitada' : 'Inativo'}
+              </span>
+            </div>
+            <p style="font-size: 0.8rem; color: #0284c7; font-weight: 600; margin: 2px 0 0;">
+              ${crmv} • <span style="color: var(--text-secondary); font-weight: 400;">${especialidade}</span>
+            </p>
+            <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 3px; display: flex; gap: 0.8rem; flex-wrap: wrap;">
+              <span><i class="fa-solid fa-hospital"></i> ${clinica}</span>
+              <span><i class="fa-solid fa-envelope"></i> ${email}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function salvarNovoVeterinarioAdmin(e) {
+  if (e && e.preventDefault) e.preventDefault();
+
+  const nomeInput = document.getElementById('admin-vet-nome');
+  const crmvInput = document.getElementById('admin-vet-crmv');
+  const ufInput = document.getElementById('admin-vet-uf');
+  const clinicaInput = document.getElementById('admin-vet-clinica');
+  const especInput = document.getElementById('admin-vet-especialidade');
+  const emailInput = document.getElementById('admin-vet-email');
+  const senhaInput = document.getElementById('admin-vet-senha');
+  const btnSubmit = document.getElementById('btn-salvar-vet-admin');
+
+  const nome = (nomeInput?.value || '').trim();
+  const crmvRaw = (crmvInput?.value || '').trim();
+  const uf = (ufInput?.value || 'SP').trim().toUpperCase();
+  const clinica = (clinicaInput?.value || 'Hospital Veterinário PetStory').trim();
+  const especialidade = (especInput?.value || 'Clínico Geral & Cirurgião').trim();
+  const email = (emailInput?.value || '').trim().toLowerCase();
+  const senha = (senhaInput?.value || '').trim();
+
+  if (!nome || !crmvRaw || !email || !senha) {
+    showToast('Campos Obrigatórios', 'Preencha o nome, CRMV, e-mail e senha inicial do profissional.', 'fa-triangle-exclamation', 'warning');
+    return;
+  }
+
+  if (senha.length < 4) {
+    showToast('Senha Curta', 'A senha de acesso inicial deve conter no mínimo 4 caracteres.', 'fa-lock', 'warning');
+    senhaInput?.focus();
+    return;
+  }
+
+  if (btnSubmit) {
+    btnSubmit.disabled = true;
+    btnSubmit.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Salvando Credencial...';
+  }
+
+  showToast('Gravando...', 'Cadastrando novo médico-veterinário e gerando credencial segura...', 'fa-circle-notch fa-spin');
+
+  // Formata o CRMV
+  let crmvFormatado = crmvRaw;
+  if (!crmvFormatado.toUpperCase().startsWith('CRMV-')) {
+    crmvFormatado = `CRMV-${uf} ${crmvRaw}`;
+  }
+
+  let gravadoComSucesso = false;
+
+  // 1. Tenta envio pelo Servidor Java
+  try {
+    const respJava = await fetch(`${BACKEND_URL}/api/admin/veterinarios`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nome: nome,
+        crmv: crmvFormatado,
+        uf: uf,
+        clinica: clinica,
+        especialidade: especialidade,
+        email: email,
+        senha: senha,
+        ativo: true
+      })
+    });
+
+    if (respJava.ok) {
+      gravadoComSucesso = true;
+    }
+  } catch (errNet) {
+    console.warn('[Admin] Backend Java offline, tentando gravação direta no Supabase:', errNet);
+  }
+
+  // 2. Fallback direto para o Supabase REST com cálculo de SHA-256 no browser
+  if (!gravadoComSucesso) {
+    try {
+      const enc = new TextEncoder();
+      const dataBytes = enc.encode("PetStory#2026$" + senha);
+      const hashBuf = await crypto.subtle.digest('SHA-256', dataBytes);
+      const senhaHash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+      const respSupabase = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/veterinarios`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_CONFIG.anonKey,
+          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
+          'Content-Type': 'application/json; charset=utf-8',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+          nome: nome,
+          crmv: crmvFormatado,
+          clinica: clinica,
+          especialidade: especialidade,
+          email: email,
+          senha_hash: senhaHash,
+          ativo: true
+        })
+      });
+
+      if (respSupabase.ok || respSupabase.status === 201) {
+        gravadoComSucesso = true;
+      }
+    } catch (errSupabase) {
+      console.error('[Admin] Erro na contingência Supabase:', errSupabase);
+    }
+  }
+
+  if (btnSubmit) {
+    btnSubmit.disabled = false;
+    btnSubmit.innerHTML = '<i class="fa-solid fa-user-plus"></i> Salvar e Ativar Credencial Médica';
+  }
+
+  if (gravadoComSucesso) {
+    showToast('Veterinário Cadastrado!', `${nome} (${crmvFormatado}) agora possui acesso clínico ativo ao PetStory.`, 'fa-circle-check', 'success');
+    document.getElementById('form-cad-vet-admin')?.reset();
+    carregarVeterinariosAdmin();
+  } else {
+    showToast('Falha no Cadastro', 'Não foi possível cadastrar o veterinário no momento. Tente novamente.', 'fa-circle-xmark', 'danger');
+  }
+}
+
 // Expõe no escopo global
 window.salvarSessaoVet = salvarSessaoVet;
 window.obterSessaoVet = obterSessaoVet;
 window.encerrarSessaoVet = encerrarSessaoVet;
+window.salvarSessaoAdmin = salvarSessaoAdmin;
+window.obterSessaoAdmin = obterSessaoAdmin;
+window.encerrarSessaoAdmin = encerrarSessaoAdmin;
+window.carregarVeterinariosAdmin = carregarVeterinariosAdmin;
+window.salvarNovoVeterinarioAdmin = salvarNovoVeterinarioAdmin;
 window.salvarAutorizacaoClinica = salvarAutorizacaoClinica;
 window.obterAutorizacaoClinica = obterAutorizacaoClinica;
 window.limparAutorizacaoClinica = limparAutorizacaoClinica;

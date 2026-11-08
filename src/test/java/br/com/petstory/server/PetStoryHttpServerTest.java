@@ -433,4 +433,37 @@ public class PetStoryHttpServerTest {
         JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
         assertFalse(json.get("sucesso").getAsBoolean());
     }
+
+    @Test
+    @DisplayName("GET /api/admin/veterinarios deve retornar lista de veterinários ativos")
+    public void testAdminListarVeterinarios() throws Exception {
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/admin/veterinarios"))
+                .GET()
+                .build();
+
+        HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, resp.statusCode());
+
+        JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
+        assertTrue(json.get("sucesso").getAsBoolean());
+        assertTrue(json.has("veterinarios"));
+        assertTrue(json.getAsJsonArray("veterinarios").size() > 0);
+    }
+
+    @Test
+    @DisplayName("POST /api/admin/veterinarios deve validar campos obrigatórios")
+    public void testAdminCadastrarVeterinarioValidacao() throws Exception {
+        JsonObject body = new JsonObject();
+        body.addProperty("nome", ""); // Nome vazio deve falhar
+
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/admin/veterinarios"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body.toString(), StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+        assertEquals(400, resp.statusCode());
+    }
 }

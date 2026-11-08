@@ -291,10 +291,10 @@ async function renderTutorPortal(tutor, pet, tagCode) {
       if (prontuario.vacinas && Array.isArray(prontuario.vacinas)) {
         listaVacinas = prontuario.vacinas.map(v => ({
           nome: v.nome_vacina || v.nome,
-          lote: v.laboratorio_lote || v.lote || `${v.loteFabricante || 'Lote Padrão'} • ${v.veterinarioResponsavel || 'CRMV-SP 38.412'}`,
+          lote: v.laboratorio_lote || v.lote || (v.loteFabricante ? `${v.loteFabricante} • ${v.veterinarioResponsavel || 'CRMV Veterinário'}` : 'Lote Padrão'),
           reforco: formatarDataBr(v.data_reforco || v.dataReforco),
           aplicacao: formatarDataBr(v.data_aplicacao || v.dataAplicacao),
-          crmv: v.veterinario_crmv || v.veterinarioResponsavel || 'Dr. Ricardo (CRMV-SP 38.412)',
+          crmv: v.veterinario_crmv || v.veterinarioResponsavel || 'Médico-Veterinário Habilitado',
           status: v.status || 'Em Dia'
         }));
       }
@@ -362,7 +362,7 @@ async function renderTutorPortal(tutor, pet, tagCode) {
               <i class="fa-solid ${icon}"></i> ${lem.titulo}
             </div>
             <div style="font-size: 0.78rem; color: ${subColor};">
-              Data: ${lem.data} • ${lem.responsavel || 'Dr. Ricardo'}
+              Data: ${lem.data} • ${lem.responsavel || 'Clínica Veterinária'}
             </div>
             ${lem.detalhe ? `<div style="font-size: 0.74rem; color: #64748b; margin-top: 2px;">Orientação: ${lem.detalhe}</div>` : ''}
           </div>
@@ -371,10 +371,11 @@ async function renderTutorPortal(tutor, pet, tagCode) {
     } else {
       listaVacinas.forEach(v => {
         if (v.reforco && v.reforco !== 'Pendente') {
+          const respVax = v.crmv ? v.crmv.replace(/\s*\([^)]*\)/, '') : 'Veterinário Responsável';
           htmlLembretes += `
             <div class="alert-item" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 0.8rem; margin-bottom: 0.6rem;">
               <div style="font-size: 0.85rem; font-weight: 700; color: #166534;"><i class="fa-solid fa-syringe"></i> Reforço ${v.nome}</div>
-              <div style="font-size: 0.78rem; color: #15803d;">Data prevista: ${v.reforco} • Dr. Ricardo</div>
+              <div style="font-size: 0.78rem; color: #15803d;">Data prevista: ${v.reforco} • ${respVax}</div>
             </div>
           `;
         }
@@ -421,7 +422,7 @@ async function renderTutorPortal(tutor, pet, tagCode) {
                   <strong>Posologia:</strong> ${p.posologia}
                 </div>
                 <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 0.4rem;">
-                  ${p.veterinario || 'Dr. Ricardo Mendonça'} • Início: ${formatarDataBr(p.data_inicio)}
+                  ${p.veterinario || 'Médico-Veterinário Responsável'} • Início: ${formatarDataBr(p.data_inicio)}
                 </div>
               </div>
             `).join('');

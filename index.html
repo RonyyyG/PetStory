@@ -500,7 +500,7 @@
             <div class="vet-credential-info" style="flex: 1;">
               <h4 id="vet-scanner-doctor-name">Dr. Ricardo Mendonça</h4>
               <span id="vet-scanner-doctor-crmv">CRMV-SP 38.412</span>
-              <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+              <p id="vet-scanner-doctor-clinic" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
                 Hospital Veterinário São Francisco • Unidade Jardins
               </p>
             </div>
@@ -900,8 +900,7 @@
             Registrar Nova Consulta ou Procedimento
           </h3>
           <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
-            A anotação clínica será carimbada com seu CRMV-SP 38.412 e entrará imediatamente na Linha do Tempo do
-            animal.
+            A anotação clínica será carimbada com sua assinatura profissional (CRMV) e entrará imediatamente na Linha do Tempo do animal.
           </p>
 
           <div class="form-row-2">
@@ -1210,6 +1209,158 @@
       </div>
     </section>
 
+
+    <!-- ====================================================================
+         TELA 5: PAINEL ADMINISTRATIVO • GESTÃO DO CORPO CLÍNICO
+         ==================================================================== -->
+    <section id="screen-admin" class="screen-view">
+      <div class="container" style="max-width: 1100px; margin: 0 auto; padding-bottom: 3rem;">
+
+        <!-- Header do Admin -->
+        <div class="vet-portal-header" style="margin-bottom: 2rem;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.3rem;">
+              <span class="badge-status" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6;">
+                <i class="fa-solid fa-user-shield"></i> Painel do Administrador
+              </span>
+              <span class="badge-status badge-success">
+                <i class="fa-solid fa-server"></i> Supabase Sync
+              </span>
+            </div>
+            <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--text-main); margin: 0;">
+              Gestão do Corpo Clínico Veterinário
+            </h1>
+            <p style="font-size: 0.88rem; color: var(--text-secondary); margin-top: 0.35rem;">
+              Cadastre novos médicos-veterinários, habilite credenciais com CRMV e audite o acesso clínico ao sistema.
+            </p>
+          </div>
+          <div>
+            <button type="button" class="btn-secondary" onclick="encerrarSessaoAdmin()" style="font-size: 0.85rem; padding: 0.65rem 1.1rem;">
+              <i class="fa-solid fa-arrow-right-from-bracket"></i> Encerrar Sessão Admin
+            </button>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1.25fr; gap: 1.8rem; align-items: start;">
+          <!-- Coluna 1: Formulário de Cadastro de Novo Veterinário -->
+          <div class="card-glass" style="position: sticky; top: 85px;">
+            <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.2rem; padding-bottom: 0.8rem; border-bottom: 1px solid var(--border-glass);">
+              <div style="width: 36px; height: 36px; border-radius: 10px; background: var(--teal-tint); color: var(--teal-dark); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                <i class="fa-solid fa-user-doctor"></i>
+              </div>
+              <div>
+                <h3 style="font-size: 1.1rem; margin: 0; color: var(--text-main);">Cadastrar Médico-Veterinário</h3>
+                <span style="font-size: 0.78rem; color: var(--text-muted);">Nova credencial médica auditada</span>
+              </div>
+            </div>
+
+            <form id="form-cad-vet-admin" onsubmit="salvarNovoVeterinarioAdmin(event)">
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label class="form-label" for="admin-vet-nome">Nome Completo do Profissional *</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-user-doctor"></i>
+                  <input type="text" id="admin-vet-nome" class="form-input" placeholder="Ex: Dra. Camila Rocha" required>
+                </div>
+              </div>
+
+              <div class="form-row-2" style="margin-bottom: 1rem;">
+                <div class="form-group">
+                  <label class="form-label" for="admin-vet-crmv">Número do CRMV *</label>
+                  <div class="input-with-icon">
+                    <i class="fa-solid fa-id-card"></i>
+                    <input type="text" id="admin-vet-crmv" class="form-input" placeholder="Ex: 45.120" required>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="admin-vet-uf">UF do Conselho *</label>
+                  <div class="input-with-icon">
+                    <i class="fa-solid fa-location-dot"></i>
+                    <select id="admin-vet-uf" class="form-input" required>
+                      <option value="SP" selected>SP - São Paulo</option>
+                      <option value="RJ">RJ - Rio de Janeiro</option>
+                      <option value="MG">MG - Minas Gerais</option>
+                      <option value="PR">PR - Paraná</option>
+                      <option value="RS">RS - Rio Grande do Sul</option>
+                      <option value="SC">SC - Santa Catarina</option>
+                      <option value="BA">BA - Bahia</option>
+                      <option value="DF">DF - Distrito Federal</option>
+                      <option value="GO">GO - Goiás</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label class="form-label" for="admin-vet-clinica">Clínica / Hospital Veterinário</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-hospital"></i>
+                  <input type="text" id="admin-vet-clinica" class="form-input" placeholder="Ex: Clínica Veterinária Morumbi" value="Hospital Veterinário PetStory">
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label class="form-label" for="admin-vet-especialidade">Especialidade Médica</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-stethoscope"></i>
+                  <input type="text" id="admin-vet-especialidade" class="form-input" placeholder="Ex: Dermatologia & Alergologia" value="Clínico Geral & Cirurgião">
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1rem;">
+                <label class="form-label" for="admin-vet-email">E-mail Profissional de Acesso *</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-envelope"></i>
+                  <input type="email" id="admin-vet-email" class="form-input" placeholder="Ex: camila.rocha@vet.com" required>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1.4rem;">
+                <label class="form-label" for="admin-vet-senha">Senha de Acesso Inicial *</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-key"></i>
+                  <input type="password" id="admin-vet-senha" class="form-input" placeholder="Mínimo 4 caracteres (Ex: 123456)" required minlength="4">
+                </div>
+                <span style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; display: block;">
+                  Será gerado hash criptográfico SHA-256 com salt seguro no banco de dados.
+                </span>
+              </div>
+
+              <button type="submit" class="btn-primary" id="btn-salvar-vet-admin" style="width: 100%; justify-content: center; padding: 0.85rem;">
+                <i class="fa-solid fa-user-plus"></i> Salvar e Ativar Credencial Médica
+              </button>
+            </form>
+          </div>
+
+          <!-- Coluna 2: Listagem de Veterinários Ativos -->
+          <div class="card-glass">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; padding-bottom: 0.8rem; border-bottom: 1px solid var(--border-glass);">
+              <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(37, 99, 235, 0.12); color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                  <i class="fa-solid fa-users-gear"></i>
+                </div>
+                <div>
+                  <h3 style="font-size: 1.1rem; margin: 0; color: var(--text-main);">Corpo Clínico Habilitado</h3>
+                  <span style="font-size: 0.78rem; color: var(--text-muted);">Profissionais com permissão de atendimento</span>
+                </div>
+              </div>
+              <button type="button" class="btn-secondary" onclick="carregarVeterinariosAdmin()" style="font-size: 0.78rem; padding: 0.4rem 0.8rem;" title="Atualizar listagem do banco">
+                <i class="fa-solid fa-rotate"></i> Atualizar
+              </button>
+            </div>
+
+            <!-- Container dinâmico da listagem -->
+            <div id="admin-vets-list" style="display: flex; flex-direction: column; gap: 0.85rem;">
+              <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.5rem; color: var(--teal-primary);"></i>
+                <p style="margin-top: 0.5rem; font-size: 0.85rem;">Carregando veterinários do Supabase...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
   </main>
 
 
@@ -1336,7 +1487,7 @@
           Registrar Nova Vacina
         </h3>
         <p style="font-size: 0.85rem; color: var(--text-secondary);">
-          A dose será assinada com seu CRMV-SP 38.412 e sincronizada na carteirinha digital do tutor.
+          A dose será assinada com sua credencial CRMV e sincronizada na carteirinha digital do tutor.
         </p>
       </div>
 
@@ -1469,7 +1620,7 @@
           <div class="form-group">
             <label class="form-label">Protocolo / Cirurgião</label>
             <input type="text" id="input-cirurgia-cirurgiao" class="form-input"
-              placeholder="Ex: Dr. Ricardo (CRMV-SP 38.412)" required>
+              placeholder="Ex: Dra. Camila Rocha (CRMV-SP 45.120)" required>
           </div>
         </div>
 
@@ -1559,10 +1710,10 @@
       </button>
 
       <div style="text-align: center; border-bottom: 2px dashed #00a887; padding-bottom: 1rem; margin-bottom: 1.2rem;">
-        <h3 style="font-size: 1.35rem; color: #00735c; margin-bottom: 0.2rem;">
+        <h3 id="modal-rx-header-clinic" style="font-size: 1.35rem; color: #00735c; margin-bottom: 0.2rem;">
           🐾 Hospital Veterinário São Francisco
         </h3>
-        <span style="font-size: 0.8rem; color: var(--text-muted);">
+        <span id="modal-rx-header-doctor" style="font-size: 0.8rem; color: var(--text-muted);">
           Dr. Ricardo Mendonça • CRMV-SP 38.412 • Clínico Geral & Cirurgião
         </span>
       </div>

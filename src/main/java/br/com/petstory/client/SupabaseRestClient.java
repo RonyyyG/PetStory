@@ -395,15 +395,16 @@ public class SupabaseRestClient {
     }
 
     /**
-     * Busca veterinário por CRMV e UF.
-     * Trata variações como "38412", "38.412", "CRMV-SP 38.412", etc.
+     * Busca veterinário por CRMV (número) ou por E-mail.
+     * Trata variações como "38412", "38.412", "CRMV-SP 38.412", "ricardo.mendonca@vet.com", etc.
      */
-    public JsonObject buscarVeterinarioPorCrmv(String crmvNumero, String uf) {
-        if (crmvNumero == null || crmvNumero.trim().isEmpty()) {
+    public JsonObject buscarVeterinarioPorCrmvOuEmail(String crmvOuEmail, String uf) {
+        if (crmvOuEmail == null || crmvOuEmail.trim().isEmpty()) {
             return null;
         }
-        String cleanNum = crmvNumero.replaceAll("\\D", "");
-        String cleanUf = (uf != null ? uf.trim().toUpperCase() : "SP");
+        String query = crmvOuEmail.trim();
+        boolean isEmail = query.contains("@");
+        String cleanNum = query.replaceAll("\\D", "");
 
         try {
             String url = SupabaseConfig.obterEndpointTabela("veterinarios") + "?select=*";
@@ -421,10 +422,17 @@ public class SupabaseRestClient {
                 JsonArray array = JsonParser.parseString(response.body()).getAsJsonArray();
                 for (JsonElement el : array) {
                     JsonObject vet = el.getAsJsonObject();
-                    String vetCrmv = vet.has("crmv") ? vet.get("crmv").getAsString() : "";
-                    String vetNumOnly = vetCrmv.replaceAll("\\D", "");
-                    if (vetNumOnly.equals(cleanNum) || (!cleanNum.isEmpty() && vetNumOnly.contains(cleanNum))) {
-                        return vet;
+                    if (isEmail) {
+                        String email = vet.has("email") && !vet.get("email").isJsonNull() ? vet.get("email").getAsString() : "";
+                        if (email.equalsIgnoreCase(query)) {
+                            return vet;
+                        }
+                    } else {
+                        String vetCrmv = vet.has("crmv") && !vet.get("crmv").isJsonNull() ? vet.get("crmv").getAsString() : "";
+                        String vetNumOnly = vetCrmv.replaceAll("\\D", "");
+                        if (!cleanNum.isEmpty() && (vetNumOnly.equals(cleanNum) || vetNumOnly.contains(cleanNum))) {
+                            return vet;
+                        }
                     }
                 }
             }
@@ -432,18 +440,106 @@ public class SupabaseRestClient {
             System.err.println("[SupabaseClient] Aviso ao buscar veterinário no Supabase: " + e.getMessage());
         }
 
-        // Fallback para Dr. Ricardo Mendonça (CRMV-SP 38.412)
-        if ("38412".equals(cleanNum) || cleanNum.isEmpty() || cleanNum.contains("38412")) {
+        // Fallback para Dr. Ricardo Mendonça (CRMV-SP 38.412 / 123456)
+        if ((isEmail && query.equalsIgnoreCase("ricardo.mendonca@vet.com")) || (!isEmail && ("38412".equals(cleanNum) || cleanNum.isEmpty() || cleanNum.contains("38412")))) {
             JsonObject vet = new JsonObject();
             vet.addProperty("id", "4f3a6b45-7f02-4c91-8ad3-f6039fc8674a");
             vet.addProperty("nome", "Dr. Ricardo Mendonça");
             vet.addProperty("crmv", "CRMV-SP 38.412");
             vet.addProperty("clinica", "Hospital Veterinário São Francisco");
             vet.addProperty("especialidade", "Clínico Geral & Cirurgião");
+            vet.addProperty("email", "ricardo.mendonca@vet.com");
+            vet.addProperty("senha_hash", "cb5d28072b28b0a1e43fb941e6af53a6cdb9ef2df42b23409a2b48efbc44c268");
+            vet.addProperty("ativo", true);
             return vet;
         }
 
         return null;
+    }
+
+    public JsonObject buscarVeterinarioPorCrmv(String crmvNumero, String uf) {
+        return buscarVeterinarioPorCrmvOuEmail(crmvNumero, uf);
+    }
+
+    /**
+     * Cadastra um novo médico-veterinário no Supabase (tabela veterinarios).
+     */
+    public JsonObject cadastrarVeterinario(JsonObject novoVet) {
+        if (novoVet == null) {
+            throw new IllegalArgumentException("Os dados do médico-veterinário são obrigatórios.");
+        }
+
+        try {
+            String url = SupabaseConfig.obterEndpointTabela("veterinarios");
+            String jsonBody = novoVet.toString();
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(8))
+                    .header("apikey", apiKey)
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Content-Type", "application/json; charset=UTF-8")
+                    .header("Prefer", "return=representation")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 201 || response.statusCode() == 200) {
+                JsonArray arr = JsonParser.parseString(response.body()).getAsJsonArray();
+                if (arr.size() > 0) {
+                    JsonObject saved = arr.get(0).getAsJsonObject();
+                    System.out.println("[SupabaseClient] Veterinário persistido no Supabase: " 
+                            + (saved.has("nome") ? saved.get("nome").getAsString() : "") 
+                            + " - " + (saved.has("crmv") ? saved.get("crmv").getAsString() : ""));
+                    return saved;
+                }
+            } else {
+                System.err.println("[SupabaseClient] Erro ao cadastrar veterinário no Supabase (HTTP " + response.statusCode() + "): " + response.body());
+                throw new RuntimeException("Falha ao cadastrar veterinário no Supabase: " + response.body());
+            }
+        } catch (Exception e) {
+            System.err.println("[SupabaseClient] Exceção ao cadastrar veterinário: " + e.getMessage());
+            throw new RuntimeException("Erro ao cadastrar veterinário: " + e.getMessage(), e);
+        }
+
+        return novoVet;
+    }
+
+    /**
+     * Lista todos os médicos-veterinários cadastrados no Supabase ordenados por nome.
+     */
+    public JsonArray listarVeterinarios() {
+        try {
+            String url = SupabaseConfig.obterEndpointTabela("veterinarios") + "?select=*&order=nome.asc";
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(6))
+                    .header("apikey", apiKey)
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Accept", "application/json")
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                return JsonParser.parseString(response.body()).getAsJsonArray();
+            }
+        } catch (Exception e) {
+            System.err.println("[SupabaseClient] Aviso ao listar veterinários no Supabase: " + e.getMessage());
+        }
+
+        // Fallback institucional com Dr. Ricardo Mendonça
+        JsonArray fallback = new JsonArray();
+        JsonObject vet = new JsonObject();
+        vet.addProperty("id", "4f3a6b45-7f02-4c91-8ad3-f6039fc8674a");
+        vet.addProperty("nome", "Dr. Ricardo Mendonça");
+        vet.addProperty("crmv", "CRMV-SP 38.412");
+        vet.addProperty("clinica", "Hospital Veterinário São Francisco");
+        vet.addProperty("especialidade", "Clínico Geral & Cirurgião");
+        vet.addProperty("email", "ricardo.mendonca@vet.com");
+        vet.addProperty("ativo", true);
+        fallback.add(vet);
+        return fallback;
     }
 
     /**

@@ -80,17 +80,30 @@ public class HttpHelper {
 
     /**
      * Envia uma resposta JSON com o status HTTP especificado.
+     * Trata desconexões antecipadas de clientes (WSAECONNABORTED / broken pipe) de forma limpa.
      */
     public static void enviarJson(HttpExchange exchange, int statusCode, Object data) throws IOException {
-        String jsonResposta = GSON.toJson(data);
-        byte[] bytes = jsonResposta.getBytes(StandardCharsets.UTF_8);
+        try {
+            String jsonResposta = GSON.toJson(data);
+            byte[] bytes = jsonResposta.getBytes(StandardCharsets.UTF_8);
 
-        exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-        exchange.sendResponseHeaders(statusCode, bytes.length);
+            exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+            exchange.sendResponseHeaders(statusCode, bytes.length);
 
-        try (OutputStream os = exchange.getResponseBody()) {
-            os.write(bytes);
-            os.flush();
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(bytes);
+                os.flush();
+            }
+        } catch (IOException e) {
+            String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+            if (msg.contains("broken pipe") || msg.contains("connection reset") 
+                    || msg.contains("wsaeconnaborted") || msg.contains("aborted") 
+                    || msg.contains("closed") || msg.contains("socket")) {
+                // Navegador ou cliente encerrou a conexão antes do término da resposta (recarregou ou fechou a aba)
+                System.out.println("[HttpHelper] Info: Conexão encerrada pelo cliente durante envio: " + e.getMessage());
+            } else {
+                throw e;
+            }
         }
     }
 

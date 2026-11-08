@@ -81,6 +81,9 @@ public class PetStoryHttpServer {
         server.createContext("/api/cirurgias", new CirurgiaPostHandler(prontuarioService));
         server.createContext("/api/prescricoes", new PrescricaoPostHandler(prontuarioService));
 
+        // Módulo Administrativo: Gestão de Veterinários
+        server.createContext("/api/admin/veterinarios", new AdminVetHandler(supabaseClient));
+
         // Executor com Virtual Threads do Java 21 para escalabilidade
         server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
 

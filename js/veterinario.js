@@ -69,10 +69,18 @@ async function validarAcessoClinicoVeterinario(tagDigitada, otpDigitado) {
 
   // 1. Tenta validação estrita no Servidor Backend Java (porta 8080)
   try {
+    const vetSession = (typeof obterSessaoVet === 'function' ? obterSessaoVet() : null) || (() => {
+      try {
+        const raw = sessionStorage.getItem('petstory_vet_session');
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) { return null; }
+    })();
+    const crmvEnvio = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV-SP 38.412');
+
     const resJava = await fetch(`${BACKEND_URL}/api/otp/validar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tag: tag, codigoOtp: otp, crmv: 'CRMV-SP 38.412' })
+      body: JSON.stringify({ tag: tag, codigoOtp: otp, crmv: crmvEnvio })
     });
 
     const dataJava = await resJava.json().catch(() => ({}));
@@ -251,12 +259,16 @@ function atualizarCredencialVetScanner() {
 
   const docNameEl = document.getElementById('vet-scanner-doctor-name');
   const docCrmvEl = document.getElementById('vet-scanner-doctor-crmv');
+  const docClinicEl = document.getElementById('vet-scanner-doctor-clinic');
 
   const nome = vetSession?.nome || 'Dr. Ricardo Mendonça';
   const crmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV-SP 38.412');
+  const clinica = vetSession?.clinica || 'Hospital Veterinário São Francisco';
+  const especialidade = vetSession?.especialidade || 'Clínico Geral & Cirurgião';
 
   if (docNameEl) docNameEl.textContent = nome;
   if (docCrmvEl) docCrmvEl.textContent = crmv;
+  if (docClinicEl) docClinicEl.textContent = `${clinica} • ${especialidade}`;
 }
 
 // ============================================================================
@@ -689,10 +701,10 @@ async function carregarVacinasProntuario(petId) {
       if (prontuario.vacinas && prontuario.vacinas.length > 0) {
         tbody.innerHTML = prontuario.vacinas.map(v => {
           const nome = v.nome_vacina || v.nome;
-          const lote = v.laboratorio_lote || v.lote || `${v.loteFabricante || 'Lote Padrão'} • ${v.veterinarioResponsavel || 'CRMV-SP 38.412'}`;
+          const lote = v.laboratorio_lote || v.lote || (v.loteFabricante ? `${v.loteFabricante} • ${v.veterinarioResponsavel || 'CRMV Veterinário'}` : 'Lote Padrão');
           const apl = formatarDataBr(v.data_aplicacao || v.dataAplicacao);
           const ref = formatarDataBr(v.data_reforco || v.dataReforco);
-          const crmv = v.veterinario_crmv || v.veterinarioResponsavel || 'Dr. Ricardo (CRMV-SP 38.412)';
+          const crmv = v.veterinario_crmv || v.veterinarioResponsavel || 'Médico-Veterinário Habilitado';
           const st = v.status || 'Em Dia';
           const badgeClass = st === 'Atrasada' ? 'badge-danger' : (st === 'Próximo do Reforço' ? 'badge-warning' : 'badge-success');
 
@@ -788,7 +800,7 @@ async function carregarCirurgiasProntuario(petId) {
           <td><strong style="color: #2563eb;">${formatarDataBr(c.data) || c.data}</strong></td>
           <td>Sedação / Avaliação prévia</td>
           <td><span>${c.notas || 'Jejum obrigatório'}</span></td>
-          <td>${c.cirurgiao || 'Dr. Ricardo Mendonça'}</td>
+          <td>${c.cirurgiao || 'Cirurgião Responsável'}</td>
           <td>${statusBadge}</td>
         </tr>
       `;
@@ -858,7 +870,7 @@ async function carregarPrescricoesProntuario(petId) {
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
           <span style="font-size: 0.75rem; color: var(--text-muted);">
-            ${rx.veterinario || 'Dr. Ricardo Mendonça'} ${rx.crmv ? '(' + rx.crmv + ')' : ''}
+            ${rx.veterinario || 'Médico-Veterinário'}${rx.crmv ? ' (' + rx.crmv + ')' : ''}
           </span>
           <button type="button" class="btn-danger-outline" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="suspenderPrescricao(this, '${rx.id || ''}')">
             <i class="fa-solid fa-ban"></i> Suspender
@@ -887,8 +899,8 @@ async function carregarTimelineProntuario(petId) {
       if (evolucoes && evolucoes.length > 0) {
         timeline.innerHTML = evolucoes.map(ev => {
           const dataFmt = formatarDataBr(ev.data_consulta) || ev.data_consulta || 'Data recente';
-          const vetNome = ev.veterinario_nome || 'Dr. Ricardo Mendonça';
-          const vetCrmv = ev.veterinario_crmv || 'CRMV-SP 38.412';
+          const vetNome = ev.veterinario_nome || 'Médico-Veterinário';
+          const vetCrmv = ev.veterinario_crmv || 'CRMV Habilitado';
           return `
             <div class="timeline-entry" style="animation: fadeIn 0.3s ease;">
               <div class="timeline-bullet" style="background: var(--teal-primary);"></div>
@@ -1183,6 +1195,16 @@ async function salvarModalVacina(event) {
   const dataAplBr = formatarDataBr(dataApl);
   const dataRefBr = formatarDataBr(dataRef);
 
+  const vetSession = (typeof obterSessaoVet === 'function' ? obterSessaoVet() : null) || (() => {
+    try {
+      const raw = sessionStorage.getItem('petstory_vet_session');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  })();
+  const vetNome = vetSession?.nome || 'Dr. Ricardo Mendonça';
+  const vetCrmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV-SP 38.412');
+  const vetAssinatura = `${vetNome} (${vetCrmv})`;
+
   // 1. Adiciona na tabela do Prontuário do Veterinário
   const tbody = document.getElementById('prontuario-vax-tbody');
   if (tbody) {
@@ -1196,7 +1218,7 @@ async function salvarModalVacina(event) {
       <td>${lote}</td>
       <td>${dataAplBr}</td>
       <td><strong style="color: #00735c;">${dataRefBr}</strong></td>
-      <td>Dr. Ricardo (CRMV-SP 38.412)</td>
+      <td>${vetAssinatura}</td>
       <td><span class="badge-status badge-success"><i class="fa-solid fa-check"></i> Em Dia</span></td>
     `;
     tbody.prepend(tr);
@@ -1218,7 +1240,7 @@ async function salvarModalVacina(event) {
           <span class="vax-title">${nome}</span>
           <span class="badge-status badge-success" style="font-size: 0.72rem;">Aplicada</span>
         </div>
-        <span class="vax-subtext">${lote} • Dr. Ricardo (CRMV-SP 38.412)</span>
+        <span class="vax-subtext">${lote} • ${vetAssinatura}</span>
       </div>
       <div class="vax-date-col">
         <div class="vax-date-label">Próximo Reforço</div>
@@ -1239,7 +1261,7 @@ async function salvarModalVacina(event) {
     alertBox.style.cssText = 'background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 0.8rem; margin-bottom: 0.6rem; animation: fadeIn 0.3s ease;';
     alertBox.innerHTML = `
       <div style="font-size: 0.85rem; font-weight: 700; color: #166534;"><i class="fa-solid fa-syringe"></i> Reforço ${nome}</div>
-      <div style="font-size: 0.78rem; color: #15803d;">Data prevista: ${dataRefBr} • Dr. Ricardo</div>
+      <div style="font-size: 0.78rem; color: #15803d;">Data prevista: ${dataRefBr} • ${vetNome}</div>
     `;
     tutorReminders.prepend(alertBox);
   }
@@ -1262,17 +1284,17 @@ async function salvarModalVacina(event) {
     laboratorio_lote: lote,
     data_aplicacao: dataApl,
     data_reforco: dataRef,
-    veterinario_crmv: 'Dr. Ricardo Mendonça (CRMV-SP 38.412)',
+    veterinario_crmv: vetAssinatura,
     status: 'Em Dia'
   };
 
   if (!window.vacinasTutorConsolidadas) window.vacinasTutorConsolidadas = [];
   window.vacinasTutorConsolidadas.unshift({
     nome: nome,
-    lote: `${lote} • Dr. Ricardo (CRMV-SP 38.412)`,
+    lote: `${lote} • ${vetAssinatura}`,
     aplicacao: dataAplBr,
     reforco: dataRefBr,
-    crmv: 'Dr. Ricardo (CRMV-SP 38.412)',
+    crmv: vetAssinatura,
     status: 'Em Dia'
   });
 
@@ -1313,13 +1335,23 @@ async function salvarModalPrescricao(event) {
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
   const targetId = resolverPetIdSupabase(pacienteAtualProntuario?.id || session?.pet?.id);
 
+  const vetSession = (typeof obterSessaoVet === 'function' ? obterSessaoVet() : null) || (() => {
+    try {
+      const raw = sessionStorage.getItem('petstory_vet_session');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  })();
+  const vetNome = vetSession?.nome || 'Dr. Ricardo Mendonça';
+  const vetCrmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV-SP 38.412');
+  const vetAssinatura = `${vetNome} (${vetCrmv})`;
+
   const rxPayload = {
     petId: targetId,
     nome: nome,
     tipo: tipo,
     indicacao: indicacao,
     posologia: posologia,
-    veterinario: 'Dr. Ricardo Mendonça (CRMV-SP 38.412) • Hoje',
+    veterinario: `${vetAssinatura} • Hoje`,
     status: 'Ativo'
   };
 
@@ -1349,8 +1381,8 @@ async function salvarModalPrescricao(event) {
         tipo: tipo,
         indicacao: indicacao,
         posologia: posologia,
-        veterinario: 'Dr. Ricardo Mendonça',
-        crmv: 'CRMV-SP 38.412',
+        veterinario: vetNome,
+        crmv: vetCrmv,
         data_inicio: new Date().toISOString().split('T')[0],
         ativa: true
       })
@@ -1388,7 +1420,7 @@ async function salvarModalPrescricao(event) {
       </div>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
         <span style="font-size: 0.75rem; color: var(--text-muted);">
-          Dr. Ricardo Mendonça (CRMV-SP 38.412) • Hoje
+          ${vetAssinatura} • Hoje
         </span>
         <button type="button" class="btn-danger-outline" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="suspenderPrescricao(this, '${rxId || ''}')">
           <i class="fa-solid fa-ban"></i> Suspender
@@ -1451,6 +1483,20 @@ async function suspenderPrescricao(btn, rxId) {
 function abrirModalNovaCirurgia() {
   const modal = document.getElementById('modal-surgery-backdrop');
   if (modal) modal.classList.add('open');
+
+  const inputCirurgiao = document.getElementById('input-cirurgia-cirurgiao');
+  if (inputCirurgiao && !inputCirurgiao.value) {
+    const vetSession = (typeof obterSessaoVet === 'function' ? obterSessaoVet() : null) || (() => {
+      try {
+        const raw = sessionStorage.getItem('petstory_vet_session');
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) { return null; }
+    })();
+    if (vetSession?.nome) {
+      const crmv = vetSession.crmv_completo || (vetSession.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : '');
+      inputCirurgiao.value = crmv ? `${vetSession.nome} (${crmv})` : vetSession.nome;
+    }
+  }
 }
 
 function fecharModalNovaCirurgia() {
@@ -1460,9 +1506,17 @@ function fecharModalNovaCirurgia() {
 
 async function salvarModalCirurgia(event) {
   event.preventDefault();
+  const vetSession = (typeof obterSessaoVet === 'function' ? obterSessaoVet() : null) || (() => {
+    try {
+      const raw = sessionStorage.getItem('petstory_vet_session');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  })();
+  const vetDefault = vetSession?.nome ? (vetSession.crmv_completo ? `${vetSession.nome} (${vetSession.crmv_completo})` : vetSession.nome) : 'Dr. Ricardo Mendonça';
+
   const nome = document.getElementById('input-cirurgia-nome')?.value || 'Procedimento';
   const data = document.getElementById('input-cirurgia-data')?.value || '2027-02-15';
-  const cirurgiao = document.getElementById('input-cirurgia-cirurgiao')?.value || 'Dr. Ricardo Mendonça';
+  const cirurgiao = document.getElementById('input-cirurgia-cirurgiao')?.value || vetDefault;
   const notas = document.getElementById('input-cirurgia-notas')?.value || 'Jejum obrigatório';
 
   const dataBr = formatarDataBr(data);
@@ -1755,6 +1809,15 @@ async function salvarEvolucaoClinica(event) {
     if (pacienteAtualProntuario) pacienteAtualProntuario.peso = parseFloat(peso);
   }
 
+  const vetSession = (typeof obterSessaoVet === 'function' ? obterSessaoVet() : null) || (() => {
+    try {
+      const raw = sessionStorage.getItem('petstory_vet_session');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  })();
+  const vetNome = vetSession?.nome || 'Dr. Ricardo Mendonça';
+  const vetCrmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV-SP 38.412');
+
   try {
     await fetch(`${SUPABASE_CONFIG.url}/rest/v1/consultas_historico`, {
       method: 'POST',
@@ -1765,8 +1828,8 @@ async function salvarEvolucaoClinica(event) {
       },
       body: JSON.stringify({
         pet_id: targetId,
-        veterinario_nome: 'Dr. Ricardo Mendonça',
-        veterinario_crmv: 'CRMV-SP 38.412',
+        veterinario_nome: vetNome,
+        veterinario_crmv: vetCrmv,
         tipo_consulta: tipo,
         data_consulta: new Date().toISOString().split('T')[0],
         descricao: `${texto}${peso ? '\n(Peso aferido na consulta: ' + peso + ' kg)' : ''}`
@@ -1807,7 +1870,7 @@ async function salvarEvolucaoClinica(event) {
         <span class="timeline-entry-date">Hoje, ${new Date().toLocaleDateString('pt-BR')} (Aferido: ${peso} kg)</span>
       </div>
       <div class="timeline-entry-doc">
-        <i class="fa-solid fa-stethoscope"></i> Dr. Ricardo Mendonça • CRMV-SP 38.412
+        <i class="fa-solid fa-stethoscope"></i> ${vetNome} • ${vetCrmv}
       </div>
       <p class="timeline-entry-desc" style="white-space: pre-line;">${texto}</p>
     `;
@@ -1820,7 +1883,7 @@ async function salvarEvolucaoClinica(event) {
   const tabResumoBtn = document.querySelector('.tab-btn[data-tab="resumo"]');
   tabResumoBtn?.click();
 
-  showToast('Evolução Registrada!', 'Nova consulta assinada com CRMV-SP 38.412, gravada no Supabase e inserida na Linha do Tempo.', 'fa-signature', 'success');
+  showToast('Evolução Registrada!', `Nova consulta assinada com ${vetCrmv}, gravada no Supabase e inserida na Linha do Tempo.`, 'fa-signature', 'success');
 }
 
 async function abrirModalEmitirReceita() {
@@ -1829,6 +1892,22 @@ async function abrirModalEmitirReceita() {
   const petRaca = pacienteAtualProntuario?.raca || session?.pet?.raca || 'SRD';
   const tutorNome = pacienteAtualProntuario?.tutor_nome || session?.tutor?.nome || 'Tutor Responsável';
   const targetId = resolverPetIdSupabase(pacienteAtualProntuario?.id || session?.pet?.id);
+
+  const vetSession = (typeof obterSessaoVet === 'function' ? obterSessaoVet() : null) || (() => {
+    try {
+      const raw = sessionStorage.getItem('petstory_vet_session');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  })();
+  const docNome = vetSession?.nome || 'Dr. Ricardo Mendonça';
+  const docCrmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV-SP 38.412');
+  const docClinica = vetSession?.clinica || 'Hospital Veterinário São Francisco';
+  const docEspec = vetSession?.especialidade || 'Clínico Geral & Cirurgião';
+
+  const modalRxClinic = document.getElementById('modal-rx-header-clinic');
+  const modalRxDoctor = document.getElementById('modal-rx-header-doctor');
+  if (modalRxClinic) modalRxClinic.textContent = `🐾 ${docClinica}`;
+  if (modalRxDoctor) modalRxDoctor.textContent = `${docNome} • ${docCrmv} • ${docEspec}`;
 
   const rxPet = document.getElementById('rx-print-pet-nome');
   const rxRaca = document.getElementById('rx-print-pet-raca');

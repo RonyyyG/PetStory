@@ -21,10 +21,10 @@ async function baixarCarteirinhaPdf() {
         if (prontuario.vacinas && Array.isArray(prontuario.vacinas)) {
           vacinas = prontuario.vacinas.map(v => ({
             nome: v.nome_vacina || v.nome,
-            lote: v.laboratorio_lote || v.lote || `${v.loteFabricante || 'Lote Padrão'} • ${v.veterinarioResponsavel || 'CRMV-SP 38.412'}`,
+            lote: v.laboratorio_lote || v.lote || (v.loteFabricante ? `${v.loteFabricante} • ${v.veterinarioResponsavel || 'CRMV Veterinário'}` : 'Lote Padrão'),
             aplicacao: formatarDataBr(v.data_aplicacao || v.dataAplicacao),
             reforco: formatarDataBr(v.data_reforco || v.dataReforco),
-            crmv: v.veterinario_crmv || v.veterinarioResponsavel || 'Dr. Ricardo (CRMV-SP 38.412)'
+            crmv: v.veterinario_crmv || v.veterinarioResponsavel || 'Médico-Veterinário Habilitado'
           }));
         }
       }
@@ -44,7 +44,7 @@ async function baixarCarteirinhaPdf() {
           <td>${v.lote || 'Lote Padrão'}</td>
           <td>${dataAplStr}</td>
           <td><strong style="color: #00735c;">${dataRefStr}</strong></td>
-          <td>${v.crmv || 'Dr. Ricardo (CRMV-SP 38.412)'}</td>
+          <td>${v.crmv || 'Médico-Veterinário Habilitado'}</td>
         </tr>
       `;
     }).join('');
@@ -143,6 +143,18 @@ async function imprimirReceitaOficial() {
   const petNome = pacienteAtual?.nome || session?.pet?.nome || 'Paciente';
   const tutorNome = pacienteAtual?.tutor_nome || session?.tutor?.nome || 'Tutor Responsável';
   const petRaca = pacienteAtual?.raca || session?.pet?.raca || 'SRD';
+
+  const vetSession = (typeof obterSessaoVet === 'function' ? obterSessaoVet() : null) || (() => {
+    try {
+      const raw = sessionStorage.getItem('petstory_vet_session');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  })();
+
+  const docNome = vetSession?.nome || 'Dr. Ricardo Mendonça';
+  const docCrmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV-SP 38.412');
+  const docClinica = vetSession?.clinica || 'Hospital Veterinário São Francisco';
+  const docEspec = vetSession?.especialidade || 'Clínico Geral & Cirurgião';
 
   let petId = typeof resolverPetIdSupabase === 'function'
     ? resolverPetIdSupabase(pacienteAtual?.id || session?.pet?.id || pacienteAtual?.tag || session?.pet?.tag)
@@ -251,8 +263,8 @@ async function imprimirReceitaOficial() {
     <body>
       <div class="rx-page">
         <div class="hdr">
-          <h2 style="color: #00735c; margin: 0;">🐾 Hospital Veterinário São Francisco</h2>
-          <div style="font-size: 13px; color: #64748b; margin-top: 4px;">Dr. Ricardo Mendonça • CRMV-SP 38.412 • Clínico Geral & Cirurgião</div>
+          <h2 style="color: #00735c; margin: 0;">🐾 ${docClinica}</h2>
+          <div style="font-size: 13px; color: #64748b; margin-top: 4px;">${docNome} • ${docCrmv} • ${docEspec}</div>
           <div style="font-size: 12px; color: #94a3b8;">Documento Médico Oficial • Identificação Integrada PetStory Tag</div>
         </div>
 
@@ -268,8 +280,8 @@ async function imprimirReceitaOficial() {
 
         <div class="sign">
           <div class="sign-line"></div>
-          <strong>Dr. Ricardo Mendonça</strong><br>
-          <span style="font-size: 13px; color: #64748b;">Médico-Veterinário • CRMV-SP 38.412</span>
+          <strong>${docNome}</strong><br>
+          <span style="font-size: 13px; color: #64748b;">Médico-Veterinário • ${docCrmv}</span>
         </div>
       </div>
 

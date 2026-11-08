@@ -202,7 +202,7 @@
               <label class="form-label">Nome Completo do Dono</label>
               <div class="input-with-icon">
                 <i class="fa-solid fa-user"></i>
-                <input type="text" id="cad-tutor-nome" class="form-input" placeholder="Ex: Mariana Vasconcelos" required>
+                <input type="text" id="cad-tutor-nome" class="form-input" placeholder="Ex: João Silva" required>
               </div>
             </div>
 
@@ -297,7 +297,7 @@
               </div>
               <div class="form-group">
                 <label class="form-label">Data de Nascimento (ou aprox.)</label>
-                <input type="date" id="cad-pet-nasc" class="form-input" style="padding-left: 1rem;">
+                <input type="date" id="cad-pet-nasc" class="form-input" style="padding-left: 1rem;" max="2026-11-08">
               </div>
             </div>
 
@@ -435,7 +435,7 @@
                 </label>
                 <div class="input-with-icon">
                   <i class="fa-solid fa-key" style="color: var(--teal-primary);"></i>
-                  <input type="text" id="input-vet-otp" class="form-input" placeholder="Ex: 849201" maxlength="6" style="letter-spacing: 0.15em; font-weight: 700; font-family: monospace;">
+                  <input type="text" id="input-vet-otp" class="form-input" placeholder="Ex: 123456" maxlength="6" style="letter-spacing: 0.15em; font-weight: 700; font-family: monospace;">
                 </div>
               </div>
             </div>
@@ -446,7 +446,7 @@
             
             <div class="quick-chips-wrapper">
               <button type="button" class="chip-btn" data-code="PST-9921">
-                <i class="fa-solid fa-dog"></i> Thor • PST-9921
+                <i class="fa-solid fa-dog"></i> PST-9921
               </button>
               <button type="button" class="chip-btn" data-code="PST-1428">
                 <i class="fa-solid fa-shield-dog"></i> Bolinha • PST-1428
@@ -558,8 +558,8 @@
           <!-- Patient Main Data -->
           <div class="pet-main-info">
             <h2>
-              <span id="prontuario-pet-nome">Thor</span> 
-              <span class="pet-breed-tag" id="prontuario-pet-raca">Golden Retriever</span>
+              <span id="prontuario-pet-nome">Paciente</span> 
+              <span class="pet-breed-tag" id="prontuario-pet-raca">Raça</span>
               <span class="badge-status badge-success" style="font-size: 0.72rem;">
                 <i class="fa-solid fa-circle-check"></i> Prontuário Unificado Ativo
               </span>
@@ -568,33 +568,33 @@
             <div class="pet-meta-row">
               <span class="pet-meta-item">
                 <i class="fa-solid fa-venus-mars" style="color: var(--teal-primary);"></i>
-                <span id="prontuario-pet-sexo">Macho • <strong>Castrado</strong></span>
+                <span id="prontuario-pet-sexo">-</span>
               </span>
               <span class="pet-meta-item">
                 <i class="fa-solid fa-cake-candles" style="color: var(--teal-primary);"></i>
-                <span id="prontuario-pet-idade">Idade: <strong>4 anos e 2 meses</strong></span>
+                <span id="prontuario-pet-idade">-</span>
               </span>
               <span class="pet-meta-item">
                 <i class="fa-solid fa-weight-scale" style="color: var(--teal-primary);"></i>
-                Peso: <strong id="prontuario-pet-peso">32.8 kg</strong>
+                Peso: <strong id="prontuario-pet-peso">-</strong>
                 <button type="button" class="btn-quick-edit" onclick="editarPesoProntuario()" title="Atualizar peso na balança">
                   <i class="fa-solid fa-pencil"></i>
                 </button>
               </span>
               <span class="pet-meta-item">
                 <i class="fa-solid fa-tag" style="color: var(--teal-primary);"></i>
-                Tag ID: <strong class="tag-id-badge" id="prontuario-pet-tag">PST-9921</strong>
+                Tag ID: <strong class="tag-id-badge" id="prontuario-pet-tag">-</strong>
               </span>
               <span class="pet-meta-item">
                 <i class="fa-solid fa-microchip" style="color: var(--teal-primary);"></i>
-                Microchip: <strong id="prontuario-pet-microchip">981.098.108.429.182</strong>
+                Microchip: <strong id="prontuario-pet-microchip">-</strong>
               </span>
             </div>
 
             <div style="margin-top: 0.9rem; font-size: 0.85rem; color: var(--text-secondary); display: flex; flex-wrap: wrap; gap: 1rem;">
-              <span><i class="fa-solid fa-user" style="color: #60a5fa;"></i> Tutor(a): <strong id="prontuario-tutor-nome">Mariana Vasconcelos</strong></span>
-              <span><i class="fa-solid fa-phone" style="color: #60a5fa;"></i> <strong id="prontuario-tutor-tel">(11) 98765-4321</strong></span>
-              <span><i class="fa-solid fa-location-dot" style="color: #60a5fa;"></i> <span id="prontuario-tutor-cidade">São Paulo - SP</span></span>
+              <span><i class="fa-solid fa-user" style="color: #60a5fa;"></i> Tutor(a): <strong id="prontuario-tutor-nome">Tutor Responsável</strong></span>
+              <span><i class="fa-solid fa-phone" style="color: #60a5fa;"></i> <strong id="prontuario-tutor-tel">-</strong></span>
+              <span><i class="fa-solid fa-location-dot" style="color: #60a5fa;"></i> <span id="prontuario-tutor-cidade">-</span></span>
             </div>
           </div>
 
@@ -1145,7 +1145,7 @@
         <span class="level-badge level-tutor">
           <i class="fa-solid fa-paw"></i> Nível 3: Portal do Tutor & Gestão Sanitária
         </span>
-        <h1 class="section-title" id="tutor-header-title">Central de Saúde do Thor</h1>
+        <h1 class="section-title" id="tutor-header-title">Central de Saúde do Pet</h1>
         <p class="section-desc">
           Acompanhe vacinas em tempo real, controle vermífugos e antipulgas, visualize receitas médicas e autorize consultas clínicas com segurança.
         </p>
@@ -1154,9 +1154,9 @@
       <!-- Tutor Hero Banner with Live OTP Trigger -->
       <div class="tutor-hero-banner">
         <div class="tutor-hero-text">
-          <h2 id="tutor-greeting-name">Olá, Mariana! 👋</h2>
+          <h2 id="tutor-greeting-name">Olá, Tutor! 👋</h2>
           <p id="tutor-greeting-desc">
-            O Thor está com a saúde <strong>100% em dia</strong>. Próxima prevenção agendada é a revacinação V10 em 24 dias.
+            Acompanhe a saúde do seu pet em tempo real. Consulte vacinas, lembretes e gere códigos de acesso clínico com segurança.
           </p>
         </div>
         <div style="display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap;">
@@ -1305,16 +1305,16 @@
                id="public-tag-photo"
                onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23e2e8f0%22/><text x=%2250%22 y=%2260%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22%2300d2ad%22>🐕</text></svg>'">
           
-          <h1 class="public-tag-title">Você encontrou o Thor? 🐶❤️</h1>
-          <p class="public-tag-subtitle">Golden Retriever Dócil • Ele tem uma família com saudades!</p>
+          <h1 class="public-tag-title" id="public-tag-pet-name">Você encontrou este Pet? 🐾❤️</h1>
+          <p class="public-tag-subtitle" id="public-tag-pet-subtitle">Identificação Inteligente PetStory • Ajude este animal a voltar para casa!</p>
 
           <!-- Critical Health Warning Callout (Slide 5: Alerta Médico Imediato) -->
           <div class="public-health-callout">
             <i class="fa-solid fa-triangle-exclamation"></i>
             <div>
               <h4>AVISO MÉDICO VITAL DO ANIMAL</h4>
-              <p>
-                O Thor faz <strong>uso diário de medicação controlada</strong> e possui <strong>alergia severa a medicamentos comuns e alimentos</strong>. Por favor, <strong>não ofereça comida</strong> e entre em contato imediatamente com a tutora.
+              <p id="public-tag-health-warning">
+                Este animal pode possuir <strong>alergias ou necessidade de medicação contínua</strong>. Por favor, <strong>não ofereça comida sem autorização</strong> e entre em contato imediatamente com o tutor responsável.
               </p>
             </div>
           </div>
@@ -1323,7 +1323,7 @@
           <div class="public-actions-stack">
             <button type="button" class="btn-whatsapp-large" onclick="openWhatsappSimulated()">
               <i class="fa-brands fa-whatsapp" style="font-size: 1.4rem;"></i>
-              Chamar Mariana (Tutora) no WhatsApp
+              <span id="public-btn-whatsapp-text">Chamar Tutor(a) no WhatsApp</span>
             </button>
 
             <button type="button" class="btn-call-large" onclick="showToast('Ligando...', 'Discando para (11) 98765-4321...', 'fa-phone')">
@@ -1367,12 +1367,12 @@
         </div>
         <h3 style="font-size: 1.35rem; margin-bottom: 0.4rem;">Código de Autorização Clínica</h3>
         <p style="font-size: 0.85rem; color: var(--text-secondary);">
-          Informe este código temporário ao Dr. Veterinário para autorizar o acesso ao prontuário de <strong id="otp-modal-pet-name" style="color: var(--teal-primary);">Thor</strong>.
+          Informe este código temporário ao Dr. Veterinário para autorizar o acesso ao prontuário de <strong id="otp-modal-pet-name" style="color: var(--teal-primary);">Paciente</strong>.
         </p>
 
         <!-- Live OTP Digits -->
         <div class="otp-digit-display" id="otp-code-value">
-          849 201
+          ------
         </div>
 
         <div class="otp-timer-bar">
@@ -1698,9 +1698,9 @@
       </div>
 
       <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 1.2rem; font-size: 0.85rem; line-height: 1.6;">
-        <div><strong>Paciente:</strong> <span id="rx-print-pet-nome">Thor</span> (<span id="rx-print-pet-raca">Golden Retriever</span>)</div>
-        <div><strong>Tutor(a):</strong> <span id="rx-print-tutor-nome">Mariana Vasconcelos</span></div>
-        <div><strong>Data de Emissão:</strong> <span id="rx-print-data">03/11/2026</span></div>
+        <div><strong>Paciente:</strong> <span id="rx-print-pet-nome">Paciente</span> (<span id="rx-print-pet-raca">SRD</span>)</div>
+        <div><strong>Tutor(a):</strong> <span id="rx-print-tutor-nome">Tutor Responsável</span></div>
+        <div><strong>Data de Emissão:</strong> <span id="rx-print-data">-</span></div>
       </div>
 
       <h4 style="font-size: 1rem; color: #0f172a; margin-bottom: 0.6rem;">Medicamentos Prescritos:</h4>

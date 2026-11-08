@@ -243,118 +243,145 @@ function carregarProntuarioPaciente(tagCode) {
   const alertCronica = document.getElementById('prontuario-alert-cronica');
   const photoImg = document.getElementById('prontuario-pet-photo');
 
-  if (session && session.pet && (session.pet.tag === tagCode || (tagCode && tagCode !== 'PST-9921'))) {
-    const pet = session.pet;
-    const tutor = session.tutor;
+  const codigoAlvo = tagCode || session?.pet?.tag || 'PST-1428';
 
-    pacienteAtualProntuario = pet;
-    if (!pacienteAtualProntuario.id && pet.tag === 'PST-1428') {
-      pacienteAtualProntuario.id = '7e096a3b-0468-4347-9bee-a8286a10d416';
-    }
-    window.pacienteAtualProntuario = pacienteAtualProntuario;
+  // 1. Tenta carregar do backend Java unificado
+  fetch(`${BACKEND_URL}/api/pets/${codigoAlvo}/prontuario`)
+    .then(r => r.ok ? r.json() : null)
+    .then(prontuario => {
+      if (prontuario && prontuario.sucesso && prontuario.pet) {
+        const pet = prontuario.pet;
+        const tutor = prontuario.tutor || {};
 
-    if (pNome) pNome.textContent = pet.nome;
-    if (pRaca) pRaca.textContent = pet.raca || 'SRD';
-    if (pSexo) pSexo.innerHTML = `${pet.sexo || 'Macho'} • <strong>${pet.castrado !== false ? 'Castrado' : 'Não Castrado'}</strong>`;
-    if (pIdade) pIdade.innerHTML = `Idade: <strong>Aprox. 2 anos</strong>`;
-    if (pPeso) pPeso.textContent = `${pet.peso ? parseFloat(pet.peso).toFixed(1) : '22.3'} kg`;
-    if (pTag) pTag.textContent = pet.tag || tagCode;
-    if (pMicrochip) pMicrochip.textContent = pet.microchip || 'Pendente de Implante';
-    if (tNome) tNome.textContent = tutor?.nome || 'Rafael Martins Oliveira';
-    if (tTel) tTel.textContent = tutor?.telefone_emergencia || '(11) 98765-4321';
-    if (tCidade) tCidade.textContent = tutor?.cidade || 'Caruaru - PE';
+        pacienteAtualProntuario = pet;
+        pacienteAtualProntuario.tutor_nome = tutor.nome;
+        pacienteAtualProntuario.tutor_telefone = tutor.telefone_emergencia;
+        pacienteAtualProntuario.tutor_cidade = tutor.cidade;
+        window.pacienteAtualProntuario = pacienteAtualProntuario;
 
-    if (photoImg) {
-      if (pet.foto_url && !pet.foto_url.includes('images.unsplash.com/photo-1543466835')) {
-        photoImg.src = pet.foto_url;
+        if (pNome) pNome.textContent = pet.nome;
+        if (pRaca) pRaca.textContent = pet.raca || 'SRD';
+        if (pSexo) pSexo.innerHTML = `${pet.sexo || 'Macho'} • <strong>${pet.castrado !== false ? 'Castrado' : 'Não Castrado'}</strong>`;
+        if (pIdade) pIdade.innerHTML = `Idade: <strong>Aprox. 2 anos</strong>`;
+        if (pPeso) pPeso.textContent = `${pet.peso ? parseFloat(pet.peso).toFixed(1) : '12.5'} kg`;
+        if (pTag) pTag.textContent = pet.tag || codigoAlvo;
+        if (pMicrochip) pMicrochip.textContent = pet.microchip || 'Pendente de Implante';
+        if (tNome) tNome.textContent = tutor.nome || 'Tutor Responsável';
+        if (tTel) tTel.textContent = tutor.telefone_emergencia || '--';
+        if (tCidade) tCidade.textContent = tutor.cidade || '--';
+
+        if (photoImg) {
+          photoImg.src = pet.foto_url || DEFAULT_PET_NEUTRAL_AVATAR;
+        }
+
+        if (alertAlergia) {
+          if (pet.alergias_graves && !pet.alergias_graves.toLowerCase().includes('nenhuma')) {
+            alertAlergia.style.display = 'inline-flex';
+            alertAlergia.innerHTML = `<i class="fa-solid fa-ban"></i> ALERGIAS: ${pet.alergias_graves}`;
+          } else {
+            alertAlergia.style.display = 'none';
+          }
+        }
+
+        if (alertAnestesica) {
+          if (pet.restricoes_anestesicas && !pet.restricoes_anestesicas.toLowerCase().includes('nenhuma')) {
+            alertAnestesica.style.display = 'inline-flex';
+            alertAnestesica.innerHTML = `<i class="fa-solid fa-syringe"></i> RESTRIÇÃO ANESTÉSICA: ${pet.restricoes_anestesicas}`;
+          } else {
+            alertAnestesica.style.display = 'none';
+          }
+        }
+
+        if (alertCronica) {
+          if (pet.condicoes_cronicas && !pet.condicoes_cronicas.toLowerCase().includes('nenhuma')) {
+            alertCronica.style.display = 'inline-flex';
+            alertCronica.innerHTML = `<i class="fa-solid fa-notes-medical"></i> CONDIÇÃO: ${pet.condicoes_cronicas}`;
+          } else {
+            alertCronica.style.display = 'none';
+          }
+        }
+
+        carregarVacinasProntuario(pet.id || codigoAlvo);
+        carregarCirurgiasProntuario(pet.id || codigoAlvo);
+        carregarPrescricoesProntuario(pet.id || codigoAlvo);
+        carregarTimelineProntuario(pet.id || codigoAlvo);
+        carregarExamesProntuario(pet.id || codigoAlvo);
       } else {
-        photoImg.src = DEFAULT_PET_NEUTRAL_AVATAR;
+        aplicarSessaoLocal();
       }
-    }
+    })
+    .catch(err => {
+      console.warn('[PetStory] Aviso ao buscar prontuário do pet no Java backend:', err);
+      aplicarSessaoLocal();
+    });
 
-    if (alertAlergia) {
-      const alergias = pet.alergias_graves || 'Ração Pedegree, Dipirona';
-      alertAlergia.style.display = 'inline-flex';
-      alertAlergia.innerHTML = `<i class="fa-solid fa-ban"></i> ALERGIAS: ${alergias}`;
-    }
+  function aplicarSessaoLocal() {
+    if (session && session.pet) {
+      const pet = session.pet;
+      const tutor = session.tutor || {};
 
-    if (alertAnestesica) {
-      if (pet.restricoes_anestesicas && !pet.restricoes_anestesicas.includes('Alfa-2 Agonistas')) {
-        alertAnestesica.style.display = 'inline-flex';
-        alertAnestesica.innerHTML = `<i class="fa-solid fa-syringe"></i> RESTRIÇÃO ANESTÉSICA: ${pet.restricoes_anestesicas}`;
-      } else {
-        alertAnestesica.style.display = 'none';
+      pacienteAtualProntuario = pet;
+      pacienteAtualProntuario.tutor_nome = tutor.nome;
+      pacienteAtualProntuario.tutor_telefone = tutor.telefone_emergencia;
+      pacienteAtualProntuario.tutor_cidade = tutor.cidade;
+      window.pacienteAtualProntuario = pacienteAtualProntuario;
+
+      if (pNome) pNome.textContent = pet.nome;
+      if (pRaca) pRaca.textContent = pet.raca || 'SRD';
+      if (pSexo) pSexo.innerHTML = `${pet.sexo || 'Macho'} • <strong>${pet.castrado !== false ? 'Castrado' : 'Não Castrado'}</strong>`;
+      if (pIdade) pIdade.innerHTML = `Idade: <strong>Aprox. 2 anos</strong>`;
+      if (pPeso) pPeso.textContent = `${pet.peso ? parseFloat(pet.peso).toFixed(1) : '12.5'} kg`;
+      if (pTag) pTag.textContent = pet.tag || codigoAlvo;
+      if (pMicrochip) pMicrochip.textContent = pet.microchip || 'Pendente de Implante';
+      if (tNome) tNome.textContent = tutor.nome || 'Tutor Responsável';
+      if (tTel) tTel.textContent = tutor.telefone_emergencia || '--';
+      if (tCidade) tCidade.textContent = tutor.cidade || '--';
+
+      if (photoImg) {
+        photoImg.src = pet.foto_url || DEFAULT_PET_NEUTRAL_AVATAR;
       }
-    }
 
-    if (alertCronica) {
-      if (pet.condicoes_cronicas && !pet.condicoes_cronicas.includes('Dermatite')) {
-        alertCronica.style.display = 'inline-flex';
-        alertCronica.innerHTML = `<i class="fa-solid fa-notes-medical"></i> CONDIÇÃO: ${pet.condicoes_cronicas}`;
-      } else {
-        alertCronica.style.display = 'none';
+      if (alertAlergia) {
+        if (pet.alergias_graves && !pet.alergias_graves.toLowerCase().includes('nenhuma')) {
+          alertAlergia.style.display = 'inline-flex';
+          alertAlergia.innerHTML = `<i class="fa-solid fa-ban"></i> ALERGIAS: ${pet.alergias_graves}`;
+        } else {
+          alertAlergia.style.display = 'none';
+        }
       }
+
+      if (alertAnestesica) {
+        if (pet.restricoes_anestesicas && !pet.restricoes_anestesicas.toLowerCase().includes('nenhuma')) {
+          alertAnestesica.style.display = 'inline-flex';
+          alertAnestesica.innerHTML = `<i class="fa-solid fa-syringe"></i> RESTRIÇÃO ANESTÉSICA: ${pet.restricoes_anestesicas}`;
+        } else {
+          alertAnestesica.style.display = 'none';
+        }
+      }
+
+      if (alertCronica) {
+        if (pet.condicoes_cronicas && !pet.condicoes_cronicas.toLowerCase().includes('nenhuma')) {
+          alertCronica.style.display = 'inline-flex';
+          alertCronica.innerHTML = `<i class="fa-solid fa-notes-medical"></i> CONDIÇÃO: ${pet.condicoes_cronicas}`;
+        } else {
+          alertCronica.style.display = 'none';
+        }
+      }
+
+      carregarVacinasProntuario(pet.id || codigoAlvo);
+      carregarCirurgiasProntuario(pet.id || codigoAlvo);
+      carregarPrescricoesProntuario(pet.id || codigoAlvo);
+      carregarTimelineProntuario(pet.id || codigoAlvo);
+      carregarExamesProntuario(pet.id || codigoAlvo);
     }
-
-    carregarVacinasProntuario(pacienteAtualProntuario.id, false);
-    carregarCirurgiasProntuario(pacienteAtualProntuario.id, false);
-    carregarPrescricoesProntuario(pacienteAtualProntuario.id, false);
-    carregarTimelineProntuario(pacienteAtualProntuario.id, false);
-    carregarExamesProntuario(pacienteAtualProntuario.id, false);
-
-  } else {
-    // Paciente Thor
-    pacienteAtualProntuario = {
-      id: 'c810977d-2eea-420e-8957-3ab54afba430',
-      nome: 'Thor',
-      raca: 'Golden Retriever',
-      peso: 32.8,
-      tag: 'PST-9921',
-      foto_url: THOR_PHOTO
-    };
-    window.pacienteAtualProntuario = pacienteAtualProntuario;
-
-    if (pNome) pNome.textContent = 'Thor';
-    if (pRaca) pRaca.textContent = 'Golden Retriever';
-    if (pSexo) pSexo.innerHTML = `Macho • <strong>Castrado</strong>`;
-    if (pIdade) pIdade.innerHTML = `Idade: <strong>4 anos e 2 meses</strong> (Nasc: 14/08/2022)`;
-    if (pPeso) pPeso.textContent = `32.8 kg`;
-    if (pTag) pTag.textContent = 'PST-9921';
-    if (pMicrochip) pMicrochip.textContent = '981.098.108.429.182';
-    if (tNome) tNome.textContent = 'Mariana Vasconcelos';
-    if (tTel) tTel.textContent = '(11) 98765-4321';
-    if (tCidade) tCidade.textContent = 'São Paulo - SP';
-
-    if (photoImg) {
-      photoImg.src = THOR_PHOTO;
-    }
-
-    if (alertAlergia) {
-      alertAlergia.style.display = 'inline-flex';
-      alertAlergia.innerHTML = `<i class="fa-solid fa-ban"></i> ALERGIA GRAVE: Dipirona e Cefalexina`;
-    }
-    if (alertAnestesica) {
-      alertAnestesica.style.display = 'inline-flex';
-      alertAnestesica.innerHTML = `<i class="fa-solid fa-syringe"></i> RESTRIÇÃO ANESTÉSICA: Bradicardia induzida por Alfa-2 Agonistas`;
-    }
-    if (alertCronica) {
-      alertCronica.style.display = 'inline-flex';
-      alertCronica.innerHTML = `<i class="fa-solid fa-notes-medical"></i> CONDIÇÃO CRÔNICA: Dermatite Atópica Canina`;
-    }
-
-    carregarVacinasProntuario(pacienteAtualProntuario.id, true);
-    carregarCirurgiasProntuario(pacienteAtualProntuario.id, true);
-    carregarPrescricoesProntuario(pacienteAtualProntuario.id, true);
-    carregarTimelineProntuario(pacienteAtualProntuario.id, true);
-    carregarExamesProntuario(pacienteAtualProntuario.id, true);
   }
 }
 
-async function carregarVacinasProntuario(petId, isThor) {
+async function carregarVacinasProntuario(petId) {
   const tbody = document.getElementById('prontuario-vax-tbody');
   if (!tbody) return;
 
-  const targetId = isThor ? 'PST-9921' : (petId || 'PST-1428');
+  const targetId = petId || 'PST-1428';
 
   try {
     const resp = await fetch(`${BACKEND_URL}/api/pets/${targetId}/prontuario`);
@@ -388,44 +415,6 @@ async function carregarVacinasProntuario(petId, isThor) {
     console.warn('[PetStory] Aviso ao carregar vacinas do Java:', errNet);
   }
 
-  if (isThor) {
-    tbody.innerHTML = `
-      <tr>
-        <td><strong>V10 Poliovalente Canina</strong></td>
-        <td>Zoetis • Lote 5849-B2</td>
-        <td>15/11/2025</td>
-        <td><strong>15/11/2026</strong></td>
-        <td>Dr. Ricardo (CRMV-SP 38.412)</td>
-        <td><span class="badge-status badge-success"><i class="fa-solid fa-check"></i> Em Dia</span></td>
-      </tr>
-      <tr>
-        <td><strong>Antirrábica Defensor</strong></td>
-        <td>Zoetis • Lote 9012-K4</td>
-        <td>10/01/2026</td>
-        <td><strong>10/01/2027</strong></td>
-        <td>Dr. André (CRMV-SP 31.020)</td>
-        <td><span class="badge-status badge-success"><i class="fa-solid fa-check"></i> Em Dia</span></td>
-      </tr>
-      <tr>
-        <td><strong>Bronchi-Shield Oral</strong></td>
-        <td>Boehringer • Lote 7714-X1</td>
-        <td>15/11/2025</td>
-        <td><strong>15/11/2026</strong></td>
-        <td>Dr. Ricardo (CRMV-SP 38.412)</td>
-        <td><span class="badge-status badge-success"><i class="fa-solid fa-check"></i> Em Dia</span></td>
-      </tr>
-      <tr>
-        <td><strong>Giardiavax (Giárdia)</strong></td>
-        <td>Zoetis • Lote 3320-G8</td>
-        <td>20/03/2026</td>
-        <td><strong>20/03/2027</strong></td>
-        <td>Dra. Camila (CRMV-SP 44.910)</td>
-        <td><span class="badge-status badge-success"><i class="fa-solid fa-check"></i> Em Dia</span></td>
-      </tr>
-    `;
-    return;
-  }
-
   tbody.innerHTML = `
     <tr>
       <td colspan="6" style="text-align:center; padding:30px 15px; color:#64748b; background:#f8fafc;">
@@ -437,11 +426,11 @@ async function carregarVacinasProntuario(petId, isThor) {
   `;
 }
 
-async function carregarCirurgiasProntuario(petId, isThor) {
+async function carregarCirurgiasProntuario(petId) {
   const tbody = document.getElementById('prontuario-cirurgias-tbody');
   if (!tbody) return;
 
-  const targetId = isThor ? 'PST-9921' : (petId || 'PST-1428');
+  const targetId = petId || 'PST-1428';
 
   try {
     const resp = await fetch(`${BACKEND_URL}/api/pets/${targetId}/prontuario`);
@@ -475,33 +464,6 @@ async function carregarCirurgiasProntuario(petId, isThor) {
 
   const cirurgiasSalvas = JSON.parse(localStorage.getItem('petstory_cirurgias_' + petId) || '[]');
 
-  if (isThor) {
-    let rowsHtml = `
-      <tr>
-        <td><strong>Orquiectomia Eletiva (Castração) & Implante de Microchip</strong></td>
-        <td>10 de Novembro de 2024</td>
-        <td>Sedação e Anestesia Geral Inalatória (Isoflurano)</td>
-        <td>Procedimento sem intercorrências anestésicas. Recuperação pós-cirúrgica excelente.</td>
-        <td>Dr. André Villela (CRMV-SP 31.020)</td>
-        <td><span class="badge-status badge-success"><i class="fa-solid fa-check"></i> Concluído</span></td>
-      </tr>
-    `;
-    cirurgiasSalvas.forEach(c => {
-      rowsHtml = `
-        <tr style="background: #eff6ff;">
-          <td><strong>${c.nome}</strong></td>
-          <td><strong style="color: #2563eb;">${c.data} (Agendada)</strong></td>
-          <td>Sedação / Avaliação prévia</td>
-          <td><span>${c.notas || 'Jejum obrigatório'}</span></td>
-          <td>${c.cirurgiao}</td>
-          <td><span class="badge-status badge-pending"><i class="fa-solid fa-clock"></i> Agendada</span></td>
-        </tr>
-      ` + rowsHtml;
-    });
-    tbody.innerHTML = rowsHtml;
-    return;
-  }
-
   if (cirurgiasSalvas.length > 0) {
     tbody.innerHTML = cirurgiasSalvas.map(c => `
       <tr style="background: #eff6ff;">
@@ -525,12 +487,13 @@ async function carregarCirurgiasProntuario(petId, isThor) {
     `;
   }
 }
+}
 
-async function carregarPrescricoesProntuario(petId, isThor) {
+async function carregarPrescricoesProntuario(petId) {
   const grid = document.getElementById('prontuario-prescricoes-grid');
   if (!grid) return;
 
-  const targetId = isThor ? 'PST-9921' : (petId || 'PST-1428');
+  const targetId = petId || 'PST-1428';
 
   try {
     const resp = await fetch(`${BACKEND_URL}/api/pets/${targetId}/prontuario`);
@@ -568,55 +531,6 @@ async function carregarPrescricoesProntuario(petId, isThor) {
 
   const prescricoesSalvas = JSON.parse(localStorage.getItem('petstory_prescricoes_' + petId) || '[]');
 
-  if (isThor) {
-    let cardsHtml = `
-      <div class="rx-card">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.6rem;">
-          <h4 style="font-size: 1.1rem; color: #0f172a;">Apoquel 16mg (Maleato de Oclacitinib)</h4>
-          <span class="badge-status badge-success">Uso Contínuo</span>
-        </div>
-        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.8rem;">
-          <strong>Indicação:</strong> Controle do prurido e manifestações alérgicas de dermatite atópica.
-        </p>
-        <div style="font-size: 0.82rem; background: var(--teal-tint); border-left: 3px solid var(--teal-primary); padding: 0.6rem 0.8rem; border-radius: 4px; color: #0f172a;">
-          <strong>Posologia:</strong> Administrar 1 comprimido por via oral a cada 24 horas, sempre após alimentação matinal.
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
-          <span style="font-size: 0.75rem; color: var(--text-muted);">
-            Prescrito por Dra. Camila Fontes (CRMV-SP 44.910) • Há 9 dias
-          </span>
-          <button type="button" class="btn-danger-outline" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="suspenderPrescricao(this)">
-            <i class="fa-solid fa-ban"></i> Suspender
-          </button>
-        </div>
-      </div>
-    `;
-    prescricoesSalvas.forEach(rx => {
-      cardsHtml = `
-        <div class="rx-card" style="background: #f0fdf9; border: 1px solid #a7f3d0; border-radius: var(--radius-md); padding: 1.5rem;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.6rem;">
-            <h4 style="font-size: 1.1rem; color: #0f172a;">${rx.nome}</h4>
-            <span class="badge-status badge-success">${rx.tipo}</span>
-          </div>
-          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.8rem;">
-            <strong>Indicação:</strong> ${rx.indicacao}
-          </p>
-          <div style="font-size: 0.82rem; background: var(--teal-tint); border-left: 3px solid var(--teal-primary); padding: 0.6rem 0.8rem; border-radius: 4px; color: #0f172a;">
-            <strong>Posologia:</strong> ${rx.posologia}
-          </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
-            <span style="font-size: 0.75rem; color: var(--text-muted);">${rx.veterinario}</span>
-            <button type="button" class="btn-danger-outline" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="suspenderPrescricao(this)">
-              <i class="fa-solid fa-ban"></i> Suspender
-            </button>
-          </div>
-        </div>
-      ` + cardsHtml;
-    });
-    grid.innerHTML = cardsHtml;
-    return;
-  }
-
   if (prescricoesSalvas.length > 0) {
     grid.innerHTML = prescricoesSalvas.map(rx => `
       <div class="rx-card" style="background: #f0fdf9; border: 1px solid #a7f3d0; border-radius: var(--radius-md); padding: 1.5rem;">
@@ -649,66 +563,11 @@ async function carregarPrescricoesProntuario(petId, isThor) {
   }
 }
 
-function carregarTimelineProntuario(petId, isThor) {
+function carregarTimelineProntuario(petId) {
   const timeline = document.getElementById('prontuario-timeline-list');
   if (!timeline) return;
 
   const evolucoesSalvas = JSON.parse(localStorage.getItem('petstory_evolucoes_' + petId) || '[]');
-
-  if (isThor) {
-    let entriesHtml = `
-      <div class="timeline-entry">
-        <div class="timeline-bullet" style="background: var(--teal-primary);"></div>
-        <div class="timeline-entry-header">
-          <span class="timeline-entry-title">Consulta de Retorno Dermatológico</span>
-          <span class="timeline-entry-date">12 de Outubro de 2026 (Há 9 dias)</span>
-        </div>
-        <div class="timeline-entry-doc">
-          <i class="fa-solid fa-stethoscope"></i> Dra. Camila Fontes • CRMV-SP 44.910 (Dermatologia Vet)
-        </div>
-        <p class="timeline-entry-desc">Paciente apresentou melhora acentuada do prurido em região axilar e interdigital. Manutenção do Apoquel 16mg diário e banho com xampu de clorexidina 3%. Raspado de pele negativo para ácaros.</p>
-      </div>
-      <div class="timeline-entry">
-        <div class="timeline-bullet" style="background: #2563eb;"></div>
-        <div class="timeline-entry-header">
-          <span class="timeline-entry-title">Aplicação de Vacina Anual V10 Vanguard & Consulta Preventiva</span>
-          <span class="timeline-entry-date">15 de Novembro de 2025</span>
-        </div>
-        <div class="timeline-entry-doc">
-          <i class="fa-solid fa-stethoscope"></i> Dr. Ricardo Mendonça • CRMV-SP 38.412
-        </div>
-        <p class="timeline-entry-desc">Exame clínico sem alterações anatômicas. Ausculta cardíaca e pulmonar límpidas. Vacina V10 lote 5849-B aplicada em flanco subcutâneo. Sem reações adversas imediatas.</p>
-      </div>
-      <div class="timeline-entry">
-        <div class="timeline-bullet" style="background: #e11d48;"></div>
-        <div class="timeline-entry-header">
-          <span class="timeline-entry-title">Orquiectomia Eletiva (Castração) & Implante de Microchip</span>
-          <span class="timeline-entry-date">10 de Novembro de 2024</span>
-        </div>
-        <div class="timeline-entry-doc">
-          <i class="fa-solid fa-stethoscope"></i> Dr. André Villela • CRMV-SP 31.020 (Centro Cirúrgico)
-        </div>
-        <p class="timeline-entry-desc">Procedimento cirúrgico sob anestesia inalatória (Isoflurano). Nota: paciente apresentou leve tendência a bradicardia compensada com atropina. Pós-operatório excelente, cicatrização de primeira intenção.</p>
-      </div>
-    `;
-    evolucoesSalvas.forEach(ev => {
-      entriesHtml = `
-        <div class="timeline-entry" style="animation: fadeIn 0.3s ease;">
-          <div class="timeline-bullet" style="background: var(--teal-primary);"></div>
-          <div class="timeline-entry-header">
-            <span class="timeline-entry-title">${ev.tipo}</span>
-            <span class="timeline-entry-date">${ev.data} (Peso: ${ev.peso} kg)</span>
-          </div>
-          <div class="timeline-entry-doc">
-            <i class="fa-solid fa-stethoscope"></i> ${ev.veterinario}
-          </div>
-          <p class="timeline-entry-desc" style="white-space: pre-line;">${ev.texto}</p>
-        </div>
-      ` + entriesHtml;
-    });
-    timeline.innerHTML = entriesHtml;
-    return;
-  }
 
   if (evolucoesSalvas.length > 0) {
     timeline.innerHTML = evolucoesSalvas.map(ev => `
@@ -741,79 +600,11 @@ function carregarTimelineProntuario(petId, isThor) {
   }
 }
 
-function carregarExamesProntuario(petId, isThor) {
+function carregarExamesProntuario(petId) {
   const grid = document.getElementById('prontuario-exams-grid');
   if (!grid) return;
 
   const examesSalvos = JSON.parse(localStorage.getItem('petstory_exames_' + petId) || '[]');
-
-  if (isThor) {
-    let examesHtml = `
-      <div class="exam-card">
-        <div>
-          <div class="exam-card-top">
-            <div class="exam-icon" style="background: rgba(0, 168, 135, 0.12); color: #00735c;">
-              <i class="fa-solid fa-file-pdf"></i>
-            </div>
-            <div class="exam-info">
-              <h4>Hemograma Completo + Perfil Bioquímico</h4>
-              <span>Data: 05/10/2026 • LabVet Diagnósticos</span>
-            </div>
-          </div>
-          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
-            Eritrócitos, leucócitos e plaquetas dentro dos parâmetros de normalidade da espécie. ALT, Creatinina e Ureia normais.
-          </p>
-        </div>
-        <button type="button" class="btn-secondary" style="width: 100%;" onclick="visualizarExameSimulado('Hemograma Completo + Perfil Bioquímico')">
-          <i class="fa-solid fa-file-pdf" style="color: #f43f5e;"></i> Visualizar Laudo Assinado (PDF)
-        </button>
-      </div>
-      <div class="exam-card">
-        <div>
-          <div class="exam-card-top">
-            <div class="exam-icon" style="background: rgba(245, 158, 11, 0.12); color: #d97706;">
-              <i class="fa-solid fa-x-ray"></i>
-            </div>
-            <div class="exam-info">
-              <h4>Raio-X Coxofemoral (Triagem Preventiva)</h4>
-              <span>Data: 10/11/2024 • Centro Imagem Vet</span>
-            </div>
-          </div>
-          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
-            Ausência de incongruência articular fêmuro-acetabular bilateral. Sem sinais radiográficos de displasia.
-          </p>
-        </div>
-        <button type="button" class="btn-secondary" style="width: 100%;" onclick="visualizarExameSimulado('Raio-X Coxofemoral (Triagem)')">
-          <i class="fa-solid fa-x-ray" style="color: #fbbf24;"></i> Visualizar Radiografia (PDF)
-        </button>
-      </div>
-    `;
-    examesSalvos.forEach(ex => {
-      examesHtml = `
-        <div class="exam-card" style="background: #f0fdf9; border: 1px solid #a7f3d0;">
-          <div>
-            <div class="exam-card-top">
-              <div class="exam-icon" style="background: rgba(0, 168, 135, 0.12); color: #00735c;">
-                <i class="fa-solid fa-file-pdf"></i>
-              </div>
-              <div class="exam-info">
-                <h4>${ex.titulo}</h4>
-                <span>Data: ${ex.data} • ${ex.lab}</span>
-              </div>
-            </div>
-            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
-              ${ex.resumo}
-            </p>
-          </div>
-          <button type="button" class="btn-secondary" style="width: 100%;" onclick="visualizarExameSimulado('${ex.titulo}', '${ex.fileUrl || ''}')">
-            <i class="fa-solid fa-file-pdf" style="color: #f43f5e;"></i> Visualizar Laudo Assinado (PDF)
-          </button>
-        </div>
-      ` + examesHtml;
-    });
-    grid.innerHTML = examesHtml;
-    return;
-  }
 
   if (examesSalvos.length > 0) {
     grid.innerHTML = examesSalvos.map(ex => `
@@ -871,7 +662,7 @@ async function editarPesoProntuario() {
     }
 
     let petId = pacienteAtualProntuario?.id || session?.pet?.id;
-    if (!petId && (pacienteAtualProntuario?.tag === 'PST-9921' || pacienteAtualProntuario?.nome === 'Thor')) {
+    if (!petId && pacienteAtualProntuario?.tag === 'PST-9921') {
       petId = 'c810977d-2eea-420e-8957-3ab54afba430';
     } else if (!petId && (pacienteAtualProntuario?.tag === 'PST-1428' || pacienteAtualProntuario?.nome === 'Bolinha')) {
       petId = '7e096a3b-0468-4347-9bee-a8286a10d416';
@@ -942,7 +733,7 @@ async function salvarModalVitais(event) {
   }
 
   let petId = pacienteAtualProntuario?.id || session?.pet?.id;
-  if (!petId && (pacienteAtualProntuario?.tag === 'PST-9921' || pacienteAtualProntuario?.nome === 'Thor')) {
+  if (!petId && pacienteAtualProntuario?.tag === 'PST-9921') {
     petId = 'c810977d-2eea-420e-8957-3ab54afba430';
   } else if (!petId && (pacienteAtualProntuario?.tag === 'PST-1428' || pacienteAtualProntuario?.nome === 'Bolinha')) {
     petId = '7e096a3b-0468-4347-9bee-a8286a10d416';
@@ -1053,7 +844,7 @@ async function salvarModalVacina(event) {
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
   let petId = pacienteAtualProntuario?.id || session?.pet?.id;
   let tagCode = pacienteAtualProntuario?.tag || session?.pet?.tag;
-  if (!petId && (tagCode === 'PST-9921' || pacienteAtualProntuario?.nome === 'Thor')) {
+  if (!petId && tagCode === 'PST-9921') {
     petId = 'c810977d-2eea-420e-8957-3ab54afba430';
   } else if (!petId && (tagCode === 'PST-1428' || pacienteAtualProntuario?.nome === 'Bolinha')) {
     petId = '7e096a3b-0468-4347-9bee-a8286a10d416';
@@ -1118,7 +909,7 @@ async function salvarModalPrescricao(event) {
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
   let petId = pacienteAtualProntuario?.id || session?.pet?.id;
   let tagCode = pacienteAtualProntuario?.tag || session?.pet?.tag;
-  if (!petId && (tagCode === 'PST-9921' || pacienteAtualProntuario?.nome === 'Thor')) {
+  if (!petId && tagCode === 'PST-9921') {
     petId = 'c810977d-2eea-420e-8957-3ab54afba430';
   } else if (!petId && (tagCode === 'PST-1428' || pacienteAtualProntuario?.nome === 'Bolinha')) {
     petId = '7e096a3b-0468-4347-9bee-a8286a10d416';
@@ -1242,7 +1033,7 @@ async function salvarModalCirurgia(event) {
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
   let petId = pacienteAtualProntuario?.id || session?.pet?.id;
   let tagCode = pacienteAtualProntuario?.tag || session?.pet?.tag;
-  if (!petId && (tagCode === 'PST-9921' || pacienteAtualProntuario?.nome === 'Thor')) {
+  if (!petId && tagCode === 'PST-9921') {
     petId = 'c810977d-2eea-420e-8957-3ab54afba430';
   } else if (!petId && (tagCode === 'PST-1428' || pacienteAtualProntuario?.nome === 'Bolinha')) {
     petId = '7e096a3b-0468-4347-9bee-a8286a10d416';
@@ -1345,7 +1136,7 @@ function salvarModalExame(event) {
 
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
   let petId = pacienteAtualProntuario?.id || session?.pet?.id;
-  if (!petId && (pacienteAtualProntuario?.tag === 'PST-9921' || pacienteAtualProntuario?.nome === 'Thor')) {
+  if (!petId && pacienteAtualProntuario?.tag === 'PST-9921') {
     petId = 'c810977d-2eea-420e-8957-3ab54afba430';
   } else if (!petId && (pacienteAtualProntuario?.tag === 'PST-1428' || pacienteAtualProntuario?.nome === 'Bolinha')) {
     petId = '7e096a3b-0468-4347-9bee-a8286a10d416';
@@ -1408,7 +1199,7 @@ function visualizarExameSimulado(titulo, customFileUrl) {
   if (!win) return;
 
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
-  const petNome = pacienteAtualProntuario?.nome || session?.pet?.nome || 'Thor';
+  const petNome = pacienteAtualProntuario?.nome || session?.pet?.nome || 'Paciente';
 
   win.document.write(`
     <!DOCTYPE html>
@@ -1464,7 +1255,7 @@ function salvarEvolucaoClinica(event) {
 
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
   let petId = pacienteAtualProntuario?.id || session?.pet?.id;
-  if (!petId && (pacienteAtualProntuario?.tag === 'PST-9921' || pacienteAtualProntuario?.nome === 'Thor')) {
+  if (!petId && pacienteAtualProntuario?.tag === 'PST-9921') {
     petId = 'c810977d-2eea-420e-8957-3ab54afba430';
   } else if (!petId && (pacienteAtualProntuario?.tag === 'PST-1428' || pacienteAtualProntuario?.nome === 'Bolinha')) {
     petId = '7e096a3b-0468-4347-9bee-a8286a10d416';
@@ -1522,9 +1313,9 @@ function salvarEvolucaoClinica(event) {
 
 function abrirModalEmitirReceita() {
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
-  const petNome = pacienteAtualProntuario?.nome || session?.pet?.nome || 'Thor';
-  const petRaca = pacienteAtualProntuario?.raca || session?.pet?.raca || 'Golden Retriever';
-  const tutorNome = session?.tutor?.nome || 'Mariana Vasconcelos';
+  const petNome = pacienteAtualProntuario?.nome || session?.pet?.nome || 'Paciente';
+  const petRaca = pacienteAtualProntuario?.raca || session?.pet?.raca || 'SRD';
+  const tutorNome = session?.tutor?.nome || 'Tutor Responsável';
 
   const rxPet = document.getElementById('rx-print-pet-nome');
   const rxRaca = document.getElementById('rx-print-pet-raca');

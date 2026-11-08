@@ -171,9 +171,8 @@ function obterCredencialTutor(email) {
       const prefix = norm.split('@')[0];
       if (creds[prefix + '@example.com']) return creds[prefix + '@example.com'];
       if (creds[prefix + '@gmail.com']) return creds[prefix + '@gmail.com'];
+      if (creds[prefix]) return creds[prefix];
     }
-    if (norm.includes('mariana')) return 'senha123';
-    if (norm.includes('rafael')) return creds['rafael'] || '123456';
     return null;
   } catch (e) {
     return null;
@@ -295,7 +294,7 @@ function switchScreen(screenKey) {
     const session = obterSessaoSalva();
     if (session && session.tutor && session.pet) {
       if (typeof renderTutorPortal === 'function') {
-        renderTutorPortal(session.tutor, session.pet, session.pet.tag, session.tutor.email?.toLowerCase().includes('mariana'));
+        renderTutorPortal(session.tutor, session.pet, session.pet.tag);
       }
     }
   }
@@ -332,7 +331,7 @@ function updateHeaderContext(screenKey) {
   if (userPill) {
     if (screenKey === 'tutor') {
       const local = obterSessaoSalva();
-      const nomeTutor = local?.tutor?.nome || 'Mariana';
+      const nomeTutor = local?.tutor?.nome || 'Tutor(a)';
       userPill.innerHTML = `
         <span style="font-size: 1.2rem;">👤</span>
         <span>${nomeTutor}</span>
@@ -415,18 +414,18 @@ async function handleLoginSubmit(event, role) {
       if (respJava.ok && dataJava.sucesso) {
         const tutor = dataJava.tutor;
         const pet = dataJava.pet || {
-          nome: 'Thor',
-          raca: 'Golden Retriever',
-          peso: 32.8,
-          tag: 'PST-9921',
-          foto_url: THOR_PHOTO
+          nome: 'Paciente',
+          raca: 'SRD',
+          peso: 10.0,
+          tag: dataJava.tag || 'PST-1428',
+          foto_url: DEFAULT_PET_PHOTO
         };
-        const tagCode = dataJava.tag || pet.tag || 'PST-9921';
+        const tagCode = dataJava.tag || pet.tag || 'PST-1428';
 
         salvarCredencialTutor(email, senhaDigitada);
         salvarSessao(tutor, pet, tagCode);
         if (typeof renderTutorPortal === 'function') {
-          renderTutorPortal(tutor, pet, tagCode, email.includes('mariana'));
+          renderTutorPortal(tutor, pet, tagCode);
         }
         showToast('Login Autorizado (Java)!', `Bem-vindo(a), ${tutor.nome}! Central de saúde carregada com segurança.`, 'fa-circle-check', 'success');
         setTimeout(() => { switchScreen('tutor'); }, 500);
@@ -487,39 +486,27 @@ async function handleLoginSubmit(event, role) {
             }
           });
           const tags = await respTag.json();
-          tagCode = tags && tags.length > 0 ? tags[0].codigo : 'PST-9921';
+          tagCode = tags && tags.length > 0 ? tags[0].codigo : 'PST-1428';
         }
       } else {
         const local = obterSessaoSalva();
         if (local && local.tutor && local.tutor.email && local.tutor.email.toLowerCase() === email) {
           tutor = local.tutor;
           pet = local.pet;
-          tagCode = local.pet?.tag || 'PST-9921';
+          tagCode = local.pet?.tag || 'PST-1428';
         }
       }
 
       if (tutor && pet) {
         pet.tag = tagCode;
         if (!pet.foto_url) {
-          pet.foto_url = (pet.nome === 'Thor' || tagCode === 'PST-9921') ? THOR_PHOTO : DEFAULT_PET_PHOTO;
+          pet.foto_url = DEFAULT_PET_PHOTO;
         }
         salvarSessao(tutor, pet, tagCode);
         if (typeof renderTutorPortal === 'function') {
-          renderTutorPortal(tutor, pet, tagCode, email.includes('mariana'));
+          renderTutorPortal(tutor, pet, tagCode);
         }
         showToast('Login Efetuado!', `Bem-vindo(a), ${tutor.nome}! Central de saúde de ${pet.nome} carregada.`, 'fa-circle-check', 'success');
-        setTimeout(() => { switchScreen('tutor'); }, 500);
-        return;
-      }
-
-      if (email.includes('mariana')) {
-        const tMariana = { nome: 'Mariana Vasconcelos', email: 'mariana@email.com', telefone_emergencia: '(11) 98765-4321' };
-        const pThor = { nome: 'Thor', raca: 'Golden Retriever', peso: 32.8, alergias_graves: 'Dipirona e Sulfas (Choque anafilático prévio)', foto_url: THOR_PHOTO };
-        salvarSessao(tMariana, pThor, 'PST-9921');
-        if (typeof renderTutorPortal === 'function') {
-          renderTutorPortal(tMariana, pThor, 'PST-9921', true);
-        }
-        showToast('Login Efetuado!', 'Entrando na central de Mariana & Thor.', 'fa-paw', 'success');
         setTimeout(() => { switchScreen('tutor'); }, 500);
         return;
       }

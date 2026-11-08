@@ -5,11 +5,11 @@
 
 async function baixarCarteirinhaPdf() {
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
-  const petNome = session?.pet?.nome || 'Bolinha';
-  const petRaca = session?.pet?.raca || 'Canina';
-  const tutorNome = session?.tutor?.nome || 'Rafael Martins Oliveira';
+  const petNome = session?.pet?.nome || 'Paciente';
+  const petRaca = session?.pet?.raca || 'SRD';
+  const tutorNome = session?.tutor?.nome || 'Tutor Responsável';
   const tagCode = session?.pet?.tag || 'PST-1428';
-  const petId = session?.pet?.id || (tagCode === 'PST-1428' ? '7e096a3b-0468-4347-9bee-a8286a10d416' : null);
+  const petId = session?.pet?.id || null;
 
   // Busca vacinas reais do paciente consolidadas via API Java
   let vacinas = window.vacinasTutorConsolidadas || [];
@@ -31,15 +31,6 @@ async function baixarCarteirinhaPdf() {
     } catch (e) {
       console.warn('Erro ao buscar vacinas para PDF:', e);
     }
-  }
-
-  if (vacinas.length === 0 && (petNome === 'Thor' || tagCode === 'PST-9921')) {
-    vacinas = [
-      { nome: 'V10 Polivalente Canina', lote: 'Zoetis • Lote 5849-B2', aplicacao: '15/11/2025', reforco: '15/11/2026', crmv: 'Dr. Ricardo (CRMV-SP 38.412)' },
-      { nome: 'Antirrábica Defensor', lote: 'Zoetis • Lote 9012-K4', aplicacao: '10/01/2026', reforco: '10/01/2027', crmv: 'Dr. André (CRMV-SP 31.020)' },
-      { nome: 'Bronchi-Shield Oral', lote: 'Boehringer • Lote 7714-X1', aplicacao: '15/11/2025', reforco: '15/11/2026', crmv: 'Dr. Ricardo (CRMV-SP 38.412)' },
-      { nome: 'Giardiavax (Giárdia)', lote: 'Zoetis • Lote 3320-G8', aplicacao: '20/03/2026', reforco: '20/03/2027', crmv: 'Dra. Camila (CRMV-SP 44.910)' }
-    ];
   }
 
   let tabelaCorpo = '';
@@ -152,13 +143,13 @@ function imprimirReceitaOficial() {
   }
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
   const pacienteAtual = window.pacienteAtualProntuario;
-  const petNome = pacienteAtual?.nome || session?.pet?.nome || 'Thor';
-  const tutorNome = session?.tutor?.nome || 'Mariana Vasconcelos';
+  const petNome = pacienteAtual?.nome || session?.pet?.nome || 'Paciente';
+  const tutorNome = pacienteAtual?.tutor_nome || session?.tutor?.nome || 'Tutor Responsável';
 
   let petId = pacienteAtual?.id || session?.pet?.id;
-  if (!petId && (pacienteAtual?.tag === 'PST-9921' || pacienteAtual?.nome === 'Thor')) {
+  if (!petId && pacienteAtual?.tag === 'PST-9921') {
     petId = 'c810977d-2eea-420e-8957-3ab54afba430';
-  } else if (!petId && (pacienteAtual?.tag === 'PST-1428' || pacienteAtual?.nome === 'Bolinha')) {
+  } else if (!petId && pacienteAtual?.tag === 'PST-1428') {
     petId = '7e096a3b-0468-4347-9bee-a8286a10d416';
   }
 
@@ -167,22 +158,11 @@ function imprimirReceitaOficial() {
   if (prescricoesSalvas.length > 0) {
     htmlMedicamentos = prescricoesSalvas.map((p, idx) => `
       <div class="med">
-        <strong>${idx + 1}. ${p.nome}</strong> (${p.tipo})<br>
+        <strong>${idx + 1}. ${p.nome}</strong> (${p.tipo || 'Uso Veterinário'})<br>
         <span style="font-size: 14px; color: #334155;"><strong>Indicação:</strong> ${p.indicacao || 'Avaliação clínica'}</span><br>
         <span style="font-size: 14px; color: #334155;"><strong>Posologia:</strong> ${p.posologia}</span>
       </div>
     `).join('');
-  } else if (petNome === 'Thor') {
-    htmlMedicamentos = `
-      <div class="med">
-        <strong>1. Apoquel 16mg (Maleato de Oclacitinib)</strong> - 1 Caixa<br>
-        <span style="font-size: 14px; color: #334155;">Uso Oral: Fornecer 1 comprimido a cada 24 horas após a refeição matinal por 30 dias.</span>
-      </div>
-      <div class="med">
-        <strong>2. Xampu de Clorexidina 3% + Miconazol 2%</strong> - 1 Frasco (200ml)<br>
-        <span style="font-size: 14px; color: #334155;">Uso Tópico: Banho terapêutico a cada 7 dias, deixando a espuma agir por 10 minutos.</span>
-      </div>
-    `;
   } else {
     htmlMedicamentos = `
       <div class="med" style="color: #64748b; font-style: italic;">

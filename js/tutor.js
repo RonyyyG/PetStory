@@ -75,12 +75,21 @@ async function finalizarCadastroPet() {
     document.getElementById('cad-pet-nome')?.focus();
     return;
   }
+
+  const petNascInput = document.getElementById('cad-pet-nasc');
+  const petNasc = petNascInput?.value;
+  const hojeStr = new Date().toISOString().split('T')[0];
+  if (petNasc && petNasc > hojeStr) {
+    showToast('Data de Nascimento Inválida', 'O animal não pode ter nascido no futuro.', 'fa-calendar-xmark', 'warning');
+    petNascInput?.focus();
+    return;
+  }
+
   const petEspecie = document.getElementById('cad-pet-especie')?.value || 'Canina';
   const petRaca = document.getElementById('cad-pet-raca')?.value.trim() || 'Sem Raça Definida';
   const petPesoStr = document.getElementById('cad-pet-peso')?.value.trim() || '12.5';
   const petPeso = parseFloat(petPesoStr.replace(',', '.')) || 12.5;
   const petSexo = document.getElementById('cad-pet-sexo')?.value || 'Macho - Castrado';
-  const petNasc = document.getElementById('cad-pet-nasc')?.value || '2023-01-01';
   const petAlergias = document.getElementById('cad-pet-alergias')?.value.trim() || '';
 
   // Sorteia código único de tag (Ex: PST-1428)
@@ -211,7 +220,7 @@ async function finalizarCadastroPet() {
 // ============================================================================
 // PORTAL DO TUTOR (SINCRONIZAÇÃO EM TEMPO REAL)
 // ============================================================================
-async function renderTutorPortal(tutor, pet, tagCode, isThorDemo = false) {
+async function renderTutorPortal(tutor, pet, tagCode) {
   const tutorHeaderTitle = document.getElementById('tutor-header-title');
   const greetingName = document.getElementById('tutor-greeting-name');
   const greetingDesc = document.getElementById('tutor-greeting-desc');
@@ -224,11 +233,11 @@ async function renderTutorPortal(tutor, pet, tagCode, isThorDemo = false) {
   const remindersContainer = document.getElementById('tutor-reminders-container');
   const avatarImg = document.getElementById('tutor-pet-avatar-img');
 
-  const pNome = pet?.nome || 'Thor';
-  const tNome = tutor?.nome || 'Mariana';
-  const codigo = tagCode || pet?.tag || 'PST-9921';
+  const pNome = pet?.nome || 'Seu Pet';
+  const tNome = tutor?.nome || 'Tutor(a)';
+  const codigo = tagCode || pet?.tag || 'PST-1428';
   const alergia = pet?.alergias_graves || '';
-  const petId = pet?.id || (codigo === 'PST-1428' || pNome === 'Bolinha' ? '7e096a3b-0468-4347-9bee-a8286a10d416' : (codigo === 'PST-9921' || pNome === 'Thor' ? 'c810977d-2eea-420e-8957-3ab54afba430' : null));
+  const petId = pet?.id || null;
 
   if (tutorHeaderTitle) tutorHeaderTitle.textContent = `Central de Saúde de ${pNome}`;
   if (greetingName) greetingName.textContent = `Olá, ${tNome}! 👋`;
@@ -246,13 +255,7 @@ async function renderTutorPortal(tutor, pet, tagCode, isThorDemo = false) {
 
   // Foto do pet na medalha: foto informada ou avatar neutro SVG
   if (avatarImg) {
-    if (pet?.foto_url && !pet.foto_url.includes('images.unsplash.com/photo-1543466835')) {
-      avatarImg.src = pet.foto_url;
-    } else if (isThorDemo || (codigo === 'PST-9921' && pNome === 'Thor')) {
-      avatarImg.src = THOR_PHOTO;
-    } else {
-      avatarImg.src = DEFAULT_PET_NEUTRAL_AVATAR;
-    }
+    avatarImg.src = pet?.foto_url || DEFAULT_PET_NEUTRAL_AVATAR;
   }
 
   // Alergias estritas do animal
@@ -317,14 +320,7 @@ async function renderTutorPortal(tutor, pet, tagCode, isThorDemo = false) {
   }
 
   // Fallback se backend estiver offline
-  if (listaVacinas.length === 0 && (isThorDemo || codigo === 'PST-9921' || pNome === 'Thor')) {
-    listaVacinas = [
-      { nome: 'V10 Polivalente Canina', lote: 'Zoetis • Lote 5849-B2 • Dr. Ricardo', reforco: '15/11/2026', crmv: 'Dr. Ricardo (CRMV-SP 38.412)', status: 'Em Dia' },
-      { nome: 'Antirrábica Defensor', lote: 'Zoetis • Lote 9012-K4', reforco: '10/01/2027', crmv: 'Dr. André (CRMV-SP 31.020)', status: 'Em Dia' },
-      { nome: 'Bronchi-Shield Oral (Gripe Canina)', lote: 'Proteção contra traqueobronquite', reforco: '15/11/2026', crmv: 'Dr. Ricardo (CRMV-SP 38.412)', status: 'Em Dia' },
-      { nome: 'Giardiavax (Giárdia)', lote: 'Zoetis • Proteção entérica', reforco: '20/03/2027', crmv: 'Dra. Camila (CRMV-SP 44.910)', status: 'Em Dia' }
-    ];
-  } else if (listaVacinas.length === 0 && pet?.vacinas && pet.vacinas.length > 0) {
+  if (listaVacinas.length === 0 && pet?.vacinas && pet.vacinas.length > 0) {
     listaVacinas = pet.vacinas;
   }
 
@@ -385,17 +381,6 @@ async function renderTutorPortal(tutor, pet, tagCode, isThorDemo = false) {
           </div>
         `;
       }).join('');
-    } else if (isThorDemo || codigo === 'PST-9921' || pNome === 'Thor') {
-      htmlLembretes = `
-        <div class="alert-item" style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 0.8rem; margin-bottom: 0.6rem;">
-          <div style="font-size: 0.85rem; font-weight: 700; color: #92400e;"><i class="fa-solid fa-bug"></i> Antipulgas Simparic</div>
-          <div style="font-size: 0.78rem; color: #b45309;">Próxima dose: 12/Nov (Em 21 dias)</div>
-        </div>
-        <div class="alert-item" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 0.8rem;">
-          <div style="font-size: 0.85rem; font-weight: 700; color: #166534;"><i class="fa-solid fa-syringe"></i> Reforço Vacina V10</div>
-          <div style="font-size: 0.78rem; color: #15803d;">Data prevista: 15/Nov (Em 24 dias)</div>
-        </div>
-      `;
     } else {
       listaVacinas.forEach(v => {
         if (v.reforco && v.reforco !== 'Pendente') {
@@ -430,13 +415,22 @@ function copiarTagTutor() {
 
 function imprimirTagSimulada() {
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
-  const tagCode = document.getElementById('created-tag-code')?.textContent.trim() || session?.pet?.tag || 'PST-1428';
-  const petNome = session?.pet?.nome || 'Seu Pet';
-  const tutorTel = session?.tutor?.telefone_emergencia || '(11) 98765-4321';
+  const tagCode = document.getElementById('created-tag-code')?.textContent.trim() 
+    || document.getElementById('tutor-hero-tag-display')?.textContent.trim() 
+    || session?.pet?.tag 
+    || 'PST-1428';
+  const petNome = session?.pet?.nome || document.getElementById('cad-pet-nome')?.value.trim() || 'Paciente';
+  const petRaca = session?.pet?.raca || document.getElementById('cad-pet-raca')?.value.trim() || 'SRD';
+  const tutorNome = session?.tutor?.nome || document.getElementById('cad-tutor-nome')?.value.trim() || 'Tutor Responsável';
+  const tutorTel = session?.tutor?.telefone_emergencia || document.getElementById('cad-tutor-tel')?.value.trim() || '(11) 98765-4321';
 
-  const printWin = window.open('', '_blank', 'width=650,height=750');
+  const baseUrl = window.location.href.split('#')[0];
+  const publicUrl = `${baseUrl}#public-tag?code=${encodeURIComponent(tagCode)}`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(publicUrl)}&color=0f172a&bgcolor=ffffff`;
+
+  const printWin = window.open('', '_blank', 'width=700,height=850');
   if (!printWin) {
-    showToast('Bloqueador Ativo', 'Permita popups para visualizar a impressão da tag.', 'fa-triangle-exclamation', 'warning');
+    showToast('Bloqueador Ativo', 'Permita popups para visualizar a impressão da medalha.', 'fa-triangle-exclamation', 'warning');
     return;
   }
 
@@ -447,30 +441,211 @@ function imprimirTagSimulada() {
       <meta charset="UTF-8">
       <title>Medalha Inteligente PetStory - ${tagCode}</title>
       <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; text-align: center; color: #0f172a; }
-        .tag-card { max-width: 380px; margin: 0 auto; border: 3px solid #00d2ad; border-radius: 24px; padding: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); background: #ffffff; }
-        .logo { font-size: 22px; font-weight: 800; color: #00a887; margin-bottom: 8px; }
-        .tag-id { font-size: 32px; font-weight: 900; letter-spacing: 2px; color: #0f172a; background: #e6faf5; border-radius: 12px; padding: 8px 16px; margin: 16px 0; display: inline-block; border: 1px dashed #00a887; }
-        .pet-info { font-size: 16px; margin: 12px 0; color: #334155; }
-        .emergency { background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 12px; margin-top: 18px; color: #991b1b; font-weight: 600; font-size: 14px; }
-        .instructions { font-size: 12px; color: #64748b; margin-top: 20px; line-height: 1.5; }
-        @media print { body { padding: 0; } .tag-card { border: 2px solid #000; box-shadow: none; } button { display: none; } }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          background: #f1f5f9;
+          color: #0f172a;
+          padding: 30px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .cut-wrapper {
+          border: 2px dashed #94a3b8;
+          border-radius: 28px;
+          padding: 24px;
+          background: #ffffff;
+          max-width: 420px;
+          width: 100%;
+          position: relative;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+          margin-bottom: 25px;
+        }
+        .scissors-tag {
+          position: absolute;
+          top: -12px;
+          left: 24px;
+          background: #ffffff;
+          padding: 0 8px;
+          font-size: 12px;
+          color: #64748b;
+          font-weight: 600;
+        }
+        .header {
+          text-align: center;
+          border-bottom: 2px solid #00d2ad;
+          padding-bottom: 12px;
+          margin-bottom: 16px;
+        }
+        .header h1 {
+          font-size: 18px;
+          font-weight: 800;
+          color: #00876c;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+        }
+        .header p {
+          font-size: 11px;
+          color: #64748b;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-top: 2px;
+        }
+        .tag-highlight {
+          text-align: center;
+          margin: 12px 0 16px;
+        }
+        .tag-badge {
+          display: inline-block;
+          font-size: 26px;
+          font-weight: 900;
+          letter-spacing: 2.5px;
+          color: #00735c;
+          background: #e6faf5;
+          border: 2px dashed #00d2ad;
+          border-radius: 12px;
+          padding: 6px 20px;
+        }
+        .qr-section {
+          text-align: center;
+          margin: 14px 0;
+        }
+        .qr-box {
+          display: inline-block;
+          background: #ffffff;
+          padding: 10px;
+          border: 1px solid #e2e8f0;
+          border-radius: 16px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .qr-box img {
+          display: block;
+          width: 170px;
+          height: 170px;
+        }
+        .qr-caption {
+          font-size: 11px;
+          color: #64748b;
+          margin-top: 6px;
+          font-weight: 500;
+        }
+        .info-card {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 12px 16px;
+          margin: 14px 0;
+          text-align: left;
+        }
+        .info-row {
+          display: flex;
+          justify-content: space-between;
+          padding: 4px 0;
+          font-size: 13px;
+          border-bottom: 1px solid #f1f5f9;
+        }
+        .info-row:last-child {
+          border-bottom: none;
+        }
+        .info-label {
+          color: #64748b;
+          font-weight: 600;
+        }
+        .info-value {
+          color: #0f172a;
+          font-weight: 700;
+        }
+        .emergency-bar {
+          background: #fef2f2;
+          border: 1px solid #fecaca;
+          border-radius: 10px;
+          padding: 10px;
+          text-align: center;
+          color: #991b1b;
+          font-size: 13px;
+          font-weight: 700;
+          margin-top: 10px;
+        }
+        .footer-usage {
+          text-align: center;
+          font-size: 11px;
+          color: #64748b;
+          line-height: 1.5;
+          margin-top: 16px;
+          padding-top: 12px;
+          border-top: 1px solid #f1f5f9;
+        }
+        .btn-print {
+          background: #00d2ad;
+          color: #ffffff;
+          border: none;
+          padding: 12px 32px;
+          font-size: 15px;
+          font-weight: 700;
+          border-radius: 10px;
+          cursor: pointer;
+          box-shadow: 0 4px 14px rgba(0,210,173,0.35);
+          transition: 0.2s ease;
+        }
+        .btn-print:hover {
+          background: #00a887;
+        }
+        @media print {
+          body { background: #ffffff; padding: 0; }
+          .cut-wrapper { border: 2px dashed #000; box-shadow: none; margin: 0 auto; }
+          .btn-print { display: none; }
+        }
       </style>
     </head>
     <body>
-      <div class="tag-card">
-        <div class="logo">🐾 PetStory • PST Tag</div>
-        <div>Identificação Sanitária & Prontuário Unificado</div>
-        <div class="tag-id">${tagCode}</div>
-        <div class="pet-info"><strong>Paciente:</strong> ${petNome}</div>
-        <div class="emergency">📞 Emergência 24h: ${tutorTel}</div>
-        <div class="instructions">
-          Aproxime por NFC ou aponte a câmera para o QR Code na coleira para ver a ficha pública ou validar acesso clínico.
+      <div class="cut-wrapper">
+        <div class="scissors-tag">✂️ Recorte na linha pontilhada</div>
+        
+        <div class="header">
+          <h1>🐾 PetStory • Identificação Inteligente</h1>
+          <p>Prontuário Veterinário Unificado & Proteção</p>
+        </div>
+
+        <div class="tag-highlight">
+          <div class="tag-badge">${tagCode}</div>
+        </div>
+
+        <div class="qr-section">
+          <div class="qr-box">
+            <img src="${qrCodeUrl}" alt="QR Code ${tagCode}" />
+          </div>
+          <div class="qr-caption">Aponte a câmera para ver a ficha pública ou validar acesso</div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-row">
+            <span class="info-label">Paciente:</span>
+            <span class="info-value">${petNome} (${petRaca})</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Tutor(a):</span>
+            <span class="info-value">${tutorNome}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Contato / WhatsApp:</span>
+            <span class="info-value">${tutorTel}</span>
+          </div>
+        </div>
+
+        <div class="emergency-bar">
+          🚨 Emergência Sanitária & Resgate 24h
+        </div>
+
+        <div class="footer-usage">
+          <strong>Como usar:</strong> Recorte esta medalha e posicione na coleira do animal. Em caso de fuga ou emergência clínica, qualquer pessoa ou médico-veterinário poderá escanear o QR Code para acessar os contatos do tutor e o prontuário unificado.
         </div>
       </div>
-      <div style="margin-top: 30px;">
-        <button onclick="window.print()" style="padding: 10px 24px; background: #00d2ad; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px;">Imprimir Agora</button>
-      </div>
+
+      <button class="btn-print" onclick="window.print()">🖨️ Imprimir Medalha</button>
     </body>
     </html>
   `);
@@ -582,9 +757,6 @@ function obterOtpEsperadoParaTag(tag) {
   } catch (e) {
     console.warn('Erro ao ler OTP ativo:', e);
   }
-  if (DEFAULT_OTPS[cleanTag] && Date.now() <= DEFAULT_OTPS[cleanTag].expiresAt) {
-    return DEFAULT_OTPS[cleanTag].code;
-  }
   return null;
 }
 
@@ -601,15 +773,12 @@ function obterNomePacientePorTag(tag) {
       return otps[cleanTag].petName;
     }
   } catch (e) {}
-  if (cleanTag === 'PST-1428') return 'Bolinha';
-  if (cleanTag === 'PST-9921') return 'Thor';
   return `Paciente (${cleanTag})`;
 }
 
 function validarTagCadastrada(tag) {
   const cleanTag = (tag || '').trim().toUpperCase();
   if (!cleanTag) return false;
-  if (cleanTag === 'PST-9921' || cleanTag === 'PST-1428') return true;
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
   if (session && session.pet && (session.pet.tag || '').toUpperCase() === cleanTag) {
     return true;
@@ -618,7 +787,7 @@ function validarTagCadastrada(tag) {
     const otps = JSON.parse(localStorage.getItem('petstory_active_otps') || '{}');
     if (otps[cleanTag]) return true;
   } catch (e) {}
-  return false;
+  return cleanTag.startsWith('PST-');
 }
 
 let otpTimerInterval = null;
@@ -632,8 +801,8 @@ async function openOtpModal() {
   if (!modal) return;
 
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
-  const petNome = session?.pet?.nome || 'Thor';
-  const petTag = session?.pet?.tag || 'PST-9921';
+  const petNome = session?.pet?.nome || 'Paciente';
+  const petTag = session?.pet?.tag || 'PST-1428';
   const petId = session?.pet?.id;
 
   if (petNameElem) petNameElem.textContent = petNome;
@@ -720,6 +889,13 @@ function initTutorInteractions() {
   const btnGenerateOtp = document.getElementById('btn-open-otp-modal');
   const lostModeToggle = document.getElementById('toggle-lost-mode');
   const copyOtpBtn = document.getElementById('btn-copy-otp');
+
+  // Trava de data de nascimento para impedir datas futuras
+  const nascInput = document.getElementById('cad-pet-nasc');
+  if (nascInput) {
+    const hoje = new Date().toISOString().split('T')[0];
+    nascInput.max = hoje;
+  }
 
   if (btnGenerateOtp) {
     btnGenerateOtp.addEventListener('click', () => {

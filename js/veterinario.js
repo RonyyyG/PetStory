@@ -163,13 +163,14 @@ async function validarAcessoClinicoVeterinario(tagDigitada, otpDigitado) {
 }
 
 function initScannerSimulations() {
-  const scanQrBtn = document.getElementById('btn-sim-qr');
-  const scanNfcBtn = document.getElementById('btn-sim-nfc');
   const formManual = document.getElementById('form-manual-vet');
   const emergencyBtn = document.getElementById('btn-emergency-override');
   const quickChips = document.querySelectorAll('.chip-btn');
   const tagInput = document.getElementById('input-tag-code');
   const otpInput = document.getElementById('input-vet-otp');
+
+  // Atualiza as credenciais do médico autenticado no terminal de scanner
+  atualizarCredencialVetScanner();
 
   quickChips.forEach(chip => {
     chip.addEventListener('click', () => {
@@ -182,18 +183,6 @@ function initScannerSimulations() {
       showToast('Tag Selecionada', `Tag [${code}] preenchida. Digite o código OTP gerado pelo tutor.`, 'fa-barcode', 'info');
     });
   });
-
-  if (scanQrBtn) {
-    scanQrBtn.addEventListener('click', () => {
-      startScanningSimulation('QR Code da Coleira');
-    });
-  }
-
-  if (scanNfcBtn) {
-    scanNfcBtn.addEventListener('click', () => {
-      startScanningSimulation('Sensor NFC');
-    });
-  }
 
   if (formManual) {
     formManual.addEventListener('submit', async (e) => {
@@ -250,24 +239,24 @@ function initScannerSimulations() {
   }
 }
 
-function startScanningSimulation(methodName) {
-  const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
-  const codigoParaEscanear = session?.pet?.tag || 'PST-1428';
-  const nomeParaEscanear = typeof obterNomePacientePorTag === 'function' ? obterNomePacientePorTag(codigoParaEscanear) : 'Paciente';
-
-  showToast('Leitura em andamento', `Lendo ${methodName}...`, 'fa-radar fa-spin');
-
-  setTimeout(() => {
-    const tagInput = document.getElementById('input-tag-code');
-    const otpInput = document.getElementById('input-vet-otp');
-    if (tagInput) tagInput.value = codigoParaEscanear;
-    if (otpInput) {
-      otpInput.value = '';
-      otpInput.focus();
+function atualizarCredencialVetScanner() {
+  const vetSession = (typeof obterSessaoVet === 'function' ? obterSessaoVet() : null) || (() => {
+    try {
+      const raw = sessionStorage.getItem('petstory_vet_session');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
     }
+  })();
 
-    showToast('Tag Identificada!', `Tag ${codigoParaEscanear} (${nomeParaEscanear}) lida. Solicite ao tutor o código OTP de 6 dígitos para abrir o prontuário.`, 'fa-qrcode', 'info');
-  }, 900);
+  const docNameEl = document.getElementById('vet-scanner-doctor-name');
+  const docCrmvEl = document.getElementById('vet-scanner-doctor-crmv');
+
+  const nome = vetSession?.nome || 'Dr. Ricardo Mendonça';
+  const crmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV-SP 38.412');
+
+  if (docNameEl) docNameEl.textContent = nome;
+  if (docCrmvEl) docCrmvEl.textContent = crmv;
 }
 
 // ============================================================================
@@ -1680,7 +1669,7 @@ function fecharModalEmitirReceita() {
 window.resolverPetIdSupabase = resolverPetIdSupabase;
 window.validarAcessoClinicoVeterinario = validarAcessoClinicoVeterinario;
 window.initScannerSimulations = initScannerSimulations;
-window.startScanningSimulation = startScanningSimulation;
+window.atualizarCredencialVetScanner = atualizarCredencialVetScanner;
 window.initMedicalRecordTabs = initMedicalRecordTabs;
 window.carregarProntuarioPaciente = carregarProntuarioPaciente;
 window.carregarVacinasProntuario = carregarVacinasProntuario;

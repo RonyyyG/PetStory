@@ -428,16 +428,6 @@
             </p>
           </div>
 
-          <!-- Simulation Controls -->
-          <div class="scanner-controls">
-            <button type="button" class="btn-primary" id="btn-sim-qr">
-              <i class="fa-solid fa-camera"></i> Simular Leitura do QR Code
-            </button>
-            <button type="button" class="btn-secondary" id="btn-sim-nfc">
-              <i class="fa-solid fa-id-badge"></i> Simular Aproximação NFC
-            </button>
-          </div>
-
           <div class="input-divider">
             <span>Ou insira o identificador manualmente</span>
           </div>
@@ -477,69 +467,73 @@
           </form>
         </div>
 
-        <!-- Right Side: Architecture & 2FA Validation Summary (Slide 6 & Slide 7) -->
+        <!-- Right Side: Terminal de Atendimento Clínico Autorizado -->
         <div class="card-glass">
-          <h3 style="font-size: 1.15rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-            <i class="fa-solid fa-lock" style="color: var(--teal-primary);"></i>
-            Segurança em Três Níveis
-          </h3>
-          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
-            Conforme arquitetura do PetStory, a consulta médica é auditada e exige validação de dupla camada.
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+            <h3 style="font-size: 1.15rem; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+              <i class="fa-solid fa-stethoscope" style="color: var(--teal-primary);"></i>
+              Terminal Clínico Autorizado
+            </h3>
+            <span class="badge-status badge-success" style="font-size: 0.75rem; padding: 0.25rem 0.65rem;">
+              <i class="fa-solid fa-circle-check"></i> Plantão Ativo • Autenticado
+            </span>
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1.2rem;">
+            Sessão médica ativa e auditada para consulta e manejo de prontuário veterinário unificado.
           </p>
 
-          <div class="audit-info-list">
-            <div class="audit-item">
-              <div class="audit-icon-wrap">
-                <i class="fa-solid fa-user-shield"></i>
-              </div>
-              <div class="audit-text">
-                <h4>1. Validação de CRMV</h4>
-                <p>O profissional está registrado e ativo no Conselho de Medicina Veterinária com sessão criptografada.
-                </p>
-              </div>
+          <!-- Dynamic Active Doctor Credential Card -->
+          <div class="vet-credential-box" style="margin-top: 0; margin-bottom: 1.4rem;">
+            <div class="vet-credential-avatar" style="display: flex; align-items: center; justify-content: center; background: #e0f2fe; color: #0284c7; font-size: 1.3rem;">
+              <i class="fa-solid fa-user-doctor"></i>
             </div>
-
-            <div class="audit-item">
-              <div class="audit-icon-wrap" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;">
-                <i class="fa-solid fa-mobile-screen"></i>
-              </div>
-              <div class="audit-text">
-                <h4>2. Duplo Fator (OTP 6 Dígitos)</h4>
-                <p>O tutor recebe push no smartphone ou informa o token temporário gerado no aplicativo PetStory.</p>
-              </div>
-            </div>
-
-            <div class="audit-item">
-              <div class="audit-icon-wrap" style="background: rgba(37, 99, 235, 0.12); color: #60a5fa;">
-                <i class="fa-solid fa-file-shield"></i>
-              </div>
-              <div class="audit-text">
-                <h4>3. Rastreabilidade LGPD</h4>
-                <p>Histórico imutável de quem acessou, data, hora, procedimentos inseridos e prescrições emitidas.</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Active Doctor ID Badge -->
-          <div class="vet-credential-box">
-            <img src="https://images.unsplash.com/photo-1628009368231-7bb7cfcb0def?auto=format&fit=crop&w=150&q=80"
-              alt="Dr. Ricardo Mendonça" class="vet-credential-avatar"
-              onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%2300d2ad%22/><text x=%2250%22 y=%2260%22 font-size=%2240%22 text-anchor=%22middle%22 fill=%22%23000%22>🩺</text></svg>'">
-            <div class="vet-credential-info">
-              <h4>Dr. Ricardo Mendonça</h4>
-              <span>CRMV-SP 38.412 • Clínico Geral & Cirurgião</span>
+            <div class="vet-credential-info" style="flex: 1;">
+              <h4 id="vet-scanner-doctor-name">Dr. Ricardo Mendonça</h4>
+              <span id="vet-scanner-doctor-crmv">CRMV-SP 38.412</span>
               <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
                 Hospital Veterinário São Francisco • Unidade Jardins
               </p>
             </div>
           </div>
 
-          <!-- Quick status metrics -->
+          <!-- Minimalist Quick Instructions (3 Steps) -->
+          <div class="audit-info-list" style="margin-top: 0; gap: 0.9rem;">
+            <div class="audit-item">
+              <div class="audit-icon-wrap" style="background: var(--teal-tint); color: var(--teal-dark);">
+                <i class="fa-solid fa-barcode"></i>
+              </div>
+              <div class="audit-text">
+                <h4 style="font-size: 0.88rem;">Passo 1: Identificar a Tag PST</h4>
+                <p style="font-size: 0.8rem;">Insira o código alfanumérico da medalha (Ex: PST-9921) ou aproxime o sensor.</p>
+              </div>
+            </div>
+
+            <div class="audit-item">
+              <div class="audit-icon-wrap" style="background: rgba(245, 158, 11, 0.12); color: #d97706;">
+                <i class="fa-solid fa-key"></i>
+              </div>
+              <div class="audit-text">
+                <h4 style="font-size: 0.88rem;">Passo 2: Digitar Token OTP de 6 Dígitos</h4>
+                <p style="font-size: 0.8rem;">Solicite o código temporário gerado no smartphone pelo tutor do animal.</p>
+              </div>
+            </div>
+
+            <div class="audit-item">
+              <div class="audit-icon-wrap" style="background: rgba(37, 99, 235, 0.12); color: #2563eb;">
+                <i class="fa-solid fa-folder-open"></i>
+              </div>
+              <div class="audit-text">
+                <h4 style="font-size: 0.88rem;">Passo 3: Prontuário Liberado por 2h</h4>
+                <p style="font-size: 0.8rem;">Acesso clínico completo concedido com rastreabilidade integral e auditoria LGPD.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Subtle Cloud Sync & Security Badge -->
           <div
-            style="margin-top: 1.5rem; padding-top: 1.2rem; border-top: 1px solid var(--border-glass); display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
-            <span><i class="fa-solid fa-server" style="color: var(--teal-primary);"></i> Nuvem Integrada</span>
-            <span><i class="fa-solid fa-shield-halved" style="color: var(--teal-primary);"></i> TLS 1.3
-              End-to-End</span>
+            style="margin-top: 1.4rem; padding-top: 1rem; border-top: 1px solid var(--border-glass); display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-muted);">
+            <span><i class="fa-solid fa-cloud-arrow-up" style="color: var(--teal-primary);"></i> Supabase Cloud Sync</span>
+            <span><i class="fa-solid fa-shield-halved" style="color: var(--teal-primary);"></i> TLS 1.3 / E2EE</span>
           </div>
         </div>
       </div>
@@ -1124,21 +1118,6 @@
                 <span>Atualizado</span>
               </div>
             </div>
-
-            <!-- Lost Pet Mode Toggle -->
-            <div class="lost-mode-box">
-              <div class="lost-mode-header">
-                <h4><i class="fa-solid fa-bell"></i> Modo Pet Perdido</h4>
-                <label class="switch">
-                  <input type="checkbox" id="toggle-lost-mode">
-                  <span class="slider"></span>
-                </label>
-              </div>
-              <p id="tutor-lost-mode-desc" style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.4;">
-                Se o animal se perder, ative este modo. Quem escanear a medalha verá alerta de emergência e você
-                receberá a localização por GPS e WhatsApp.
-              </p>
-            </div>
           </div>
 
           <!-- Next Prevention Alerts -->
@@ -1208,11 +1187,6 @@
               onclick="showToast('Ligando...', 'Discando para (11) 98765-4321...', 'fa-phone')">
               <i class="fa-solid fa-phone"></i>
               Ligar para Telefone de Emergência
-            </button>
-
-            <button type="button" class="btn-gps-large" onclick="sendGpsLocationSimulated()">
-              <i class="fa-solid fa-location-dot" style="color: var(--teal-primary);"></i>
-              Enviar Minha Localização GPS para a Tutora
             </button>
           </div>
 
@@ -1682,19 +1656,15 @@
 
 
   <!-- Footer -->
-  <footer class="site-footer">
-    <div class="container footer-inner">
-      <div style="display: flex; align-items: center; gap: 0.75rem;">
-        <i class="fa-solid fa-shield-dog" style="color: var(--teal-primary); font-size: 1.2rem;"></i>
-        <span><strong>PetStory</strong> • Prontuário Unificado & Identificação Inteligente</span>
+  <footer class="site-footer" style="padding: 1.6rem 0; text-align: center;">
+    <div class="container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.45rem;">
+      <div style="display: flex; align-items: center; gap: 0.6rem; font-size: 0.95rem; color: var(--text-main);">
+        <i class="fa-solid fa-shield-dog" style="color: var(--teal-primary); font-size: 1.25rem;"></i>
+        <span><strong>PetStory</strong> • Prontuário Veterinário Unificado & Identificação Inteligente</span>
       </div>
-      <div class="footer-links">
-        <a href="#login" onclick="switchScreen('login'); return false;">Portal de Login</a>
-        <a href="#vet-scan" onclick="switchScreen('vet-scan'); return false;">Acesso Clínico</a>
-        <a href="#tutor" onclick="switchScreen('tutor'); return false;">Área do Tutor</a>
-        <a href="#public-tag" onclick="switchScreen('public-tag'); return false;">Tag Pública</a>
-        <a href="mailto:contato@petstory.app">contato@petstory.app</a>
-      </div>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">
+        © 2026 PetStory • Todos os direitos reservados • Conformidade com CFMV e LGPD
+      </p>
     </div>
   </footer>
 

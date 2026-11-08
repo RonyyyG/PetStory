@@ -272,6 +272,10 @@ function switchScreen(screenKey) {
         renderTutorPortal(session.tutor, session.pet, session.pet.tag);
       }
     }
+  } else if (screenKey === 'vet-scan') {
+    if (typeof atualizarCredencialVetScanner === 'function') {
+      atualizarCredencialVetScanner();
+    }
   }
 }
 

@@ -220,7 +220,6 @@ async function renderTutorPortal(tutor, pet, tagCode) {
   const greetingName = document.getElementById('tutor-greeting-name');
   const greetingDesc = document.getElementById('tutor-greeting-desc');
   const heroTagDisplay = document.getElementById('tutor-hero-tag-display');
-  const lostModeDesc = document.getElementById('tutor-lost-mode-desc');
   const allergiesContainer = document.getElementById('tutor-allergies-container');
   const vaxList = document.getElementById('tutor-vax-list');
   const remindersContainer = document.getElementById('tutor-reminders-container');
@@ -240,9 +239,6 @@ async function renderTutorPortal(tutor, pet, tagCode) {
 
   // Destaque visual da Tag
   if (heroTagDisplay) heroTagDisplay.textContent = codigo;
-  if (lostModeDesc) {
-    lostModeDesc.textContent = `Se o(a) ${pNome} se perder, ative este modo. Quem escanear a medalha verá alerta de emergência e você receberá aviso por WhatsApp.`;
-  }
 
   // Foto do pet na medalha: foto informada ou avatar neutro SVG
   if (avatarImg) {
@@ -1011,7 +1007,6 @@ function initModalHandlers() {
 
 function initTutorInteractions() {
   const btnGenerateOtp = document.getElementById('btn-open-otp-modal');
-  const lostModeToggle = document.getElementById('toggle-lost-mode');
   const copyOtpBtn = document.getElementById('btn-copy-otp');
 
   // Trava de data de nascimento para impedir datas futuras
@@ -1034,26 +1029,9 @@ function initTutorInteractions() {
       showToast('Código Copiado', `Token ${otpText} copiado com sucesso!`, 'fa-copy');
     });
   }
-
-  if (lostModeToggle) {
-    lostModeToggle.addEventListener('change', (e) => {
-      if (e.target.checked) {
-        showToast('Modo Perdido Ativado!', 'A tag exibirá alerta urgente de resgate com seu telefone de emergência em destaque.', 'fa-triangle-exclamation', 'warning');
-      } else {
-        showToast('Modo Perdido Desativado', 'A tag voltou ao modo de exibição normal.', 'fa-circle-check', 'info');
-      }
-    });
-  }
 }
 
-// Ações simuladas da Tag Pública
-function sendGpsLocationSimulated() {
-  showToast('Obtendo Localização GPS...', 'Conectando ao satélite do smartphone...', 'fa-location-crosshairs fa-spin');
-  setTimeout(() => {
-    showToast('Localização Enviada com Sucesso!', 'O tutor recebeu aviso com o ponto exato no Google Maps.', 'fa-circle-check', 'success');
-  }, 1200);
-}
-
+// Ações da Tag Pública
 function openWhatsappSimulated() {
   showToast('Abrindo WhatsApp', 'Iniciando conversa direta com o tutor: "Olá, encontrei seu pet..."', 'fa-brands fa-whatsapp', 'success');
 }
@@ -1074,5 +1052,4 @@ window.openOtpModal = openOtpModal;
 window.closeOtpModal = closeOtpModal;
 window.initModalHandlers = initModalHandlers;
 window.initTutorInteractions = initTutorInteractions;
-window.sendGpsLocationSimulated = sendGpsLocationSimulated;
 window.openWhatsappSimulated = openWhatsappSimulated;

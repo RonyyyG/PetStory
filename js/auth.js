@@ -870,21 +870,22 @@ async function carregarVeterinariosAdmin() {
     const especialidade = v.especialidade || 'Clínico Geral';
     const email = v.email || 'Não informado';
     const ativo = v.ativo !== false;
+    const nomeEscapado = nome.replace(/'/g, "\\'");
 
     return `
-      <div style="background: #ffffff; border: 1px solid var(--border-glass); border-radius: 12px; padding: 1.1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.02); transition: all 0.2s ease;">
-        <div style="display: flex; align-items: center; gap: 0.9rem;">
-          <div style="width: 44px; height: 44px; border-radius: 50%; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; border: 2px solid #bae6fd;">
+      <div style="background: ${ativo ? '#ffffff' : '#f8fafc'}; border: 1px solid ${ativo ? 'var(--border-glass)' : '#cbd5e1'}; border-radius: 12px; padding: 1.1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.02); transition: all 0.2s ease;">
+        <div style="display: flex; align-items: center; gap: 0.9rem; flex: 1; min-width: 0;">
+          <div style="width: 44px; height: 44px; border-radius: 50%; background: ${ativo ? '#e0f2fe' : '#f1f5f9'}; color: ${ativo ? '#0284c7' : '#94a3b8'}; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; border: 2px solid ${ativo ? '#bae6fd' : '#e2e8f0'};">
             <i class="fa-solid fa-user-doctor"></i>
           </div>
-          <div>
+          <div style="min-width: 0;">
             <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-              <h4 style="font-size: 0.96rem; margin: 0; color: #0f172a; font-weight: 700;">${nome}</h4>
+              <h4 style="font-size: 0.96rem; margin: 0; color: ${ativo ? '#0f172a' : '#64748b'}; font-weight: 700;">${nome}</h4>
               <span class="badge-status ${ativo ? 'badge-success' : 'badge-danger'}" style="font-size: 0.68rem; padding: 0.15rem 0.5rem;">
-                <i class="fa-solid ${ativo ? 'fa-check' : 'fa-ban'}"></i> ${ativo ? 'Ativo • Credencial Habilitada' : 'Inativo'}
+                <i class="fa-solid ${ativo ? 'fa-circle-check' : 'fa-circle-pause'}"></i> ${ativo ? '🟢 Ativo • Credencial Habilitada' : '🔴 Inativo • Acesso Suspenso'}
               </span>
             </div>
-            <p style="font-size: 0.8rem; color: #0284c7; font-weight: 600; margin: 2px 0 0;">
+            <p style="font-size: 0.8rem; color: ${ativo ? '#0284c7' : '#64748b'}; font-weight: 600; margin: 2px 0 0;">
               ${crmv} • <span style="color: var(--text-secondary); font-weight: 400;">${especialidade}</span>
             </p>
             <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 3px; display: flex; gap: 0.8rem; flex-wrap: wrap;">
@@ -892,6 +893,21 @@ async function carregarVeterinariosAdmin() {
               <span><i class="fa-solid fa-envelope"></i> ${email}</span>
             </div>
           </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
+          ${ativo ? `
+            <button type="button" class="btn-secondary" style="font-size: 0.75rem; padding: 0.35rem 0.7rem; border-color: #cbd5e1; color: #475569;" title="Suspender credencial clínica" onclick="alternarStatusVeterinarioAdmin('${v.id}', false)">
+              <i class="fa-solid fa-pause"></i> Desativar
+            </button>
+          ` : `
+            <button type="button" class="btn-primary" style="font-size: 0.75rem; padding: 0.35rem 0.7rem; background: #059669; border-color: #059669;" title="Reativar credencial clínica" onclick="alternarStatusVeterinarioAdmin('${v.id}', true)">
+              <i class="fa-solid fa-play"></i> Reativar
+            </button>
+          `}
+          <button type="button" class="btn-danger-outline" style="font-size: 0.75rem; padding: 0.35rem 0.6rem; color: #dc2626; border-color: #fca5a5;" title="Remover profissional" onclick="excluirVeterinarioAdmin('${v.id}', '${nomeEscapado}')">
+            <i class="fa-solid fa-trash-can"></i> Excluir
+          </button>
         </div>
       </div>
     `;
@@ -1017,6 +1033,108 @@ async function salvarNovoVeterinarioAdmin(e) {
   }
 }
 
+async function alternarStatusVeterinarioAdmin(id, novoStatus) {
+  if (!id) return;
+
+  const acaoTexto = novoStatus ? 'reativar' : 'desativar';
+  let sucesso = false;
+
+  // 1. Tenta atualizar via Backend Java (PATCH /api/admin/veterinarios/{id})
+  try {
+    const respJava = await fetch(`${BACKEND_URL}/api/admin/veterinarios/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id, ativo: novoStatus })
+    });
+    if (respJava.ok) {
+      sucesso = true;
+    }
+  } catch (errNet) {
+    console.warn(`[Admin] Backend Java offline ao ${acaoTexto} veterinário. Usando Supabase REST:`, errNet);
+  }
+
+  // 2. Fallback de contingência direto no Supabase REST
+  if (!sucesso) {
+    try {
+      const respSupa = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/veterinarios?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_CONFIG.anonKey,
+          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ ativo: novoStatus })
+      });
+      if (respSupa.ok) {
+        sucesso = true;
+      }
+    } catch (errSupa) {
+      console.error(`[Admin] Erro ao ${acaoTexto} veterinário no Supabase:`, errSupa);
+    }
+  }
+
+  if (sucesso) {
+    if (novoStatus) {
+      showToast('Credencial Reativada!', 'O médico-veterinário agora possui acesso clínico ativo ao sistema.', 'fa-circle-check', 'success');
+    } else {
+      showToast('Acesso Suspenso!', 'A credencial do médico-veterinário foi desativada temporariamente.', 'fa-circle-pause', 'warning');
+    }
+    carregarVeterinariosAdmin();
+  } else {
+    showToast('Falha na Operação', `Não foi possível ${acaoTexto} o veterinário no momento. Tente novamente.`, 'fa-circle-xmark', 'danger');
+  }
+}
+
+async function excluirVeterinarioAdmin(id, nome) {
+  if (!id) return;
+
+  const nomeExibicao = nome || 'o médico-veterinário';
+  if (!confirm(`Deseja realmente remover o cadastro de Dr(a). ${nomeExibicao} do sistema? Esta ação é irreversível.`)) {
+    return;
+  }
+
+  let sucesso = false;
+
+  // 1. Tenta excluir via Backend Java (DELETE /api/admin/veterinarios/{id})
+  try {
+    const respJava = await fetch(`${BACKEND_URL}/api/admin/veterinarios/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id })
+    });
+    if (respJava.ok) {
+      sucesso = true;
+    }
+  } catch (errNet) {
+    console.warn('[Admin] Backend Java offline ao excluir veterinário. Usando Supabase REST:', errNet);
+  }
+
+  // 2. Fallback de contingência direto no Supabase REST
+  if (!sucesso) {
+    try {
+      const respSupa = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/veterinarios?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': SUPABASE_CONFIG.anonKey,
+          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+        }
+      });
+      if (respSupa.ok) {
+        sucesso = true;
+      }
+    } catch (errSupa) {
+      console.error('[Admin] Erro ao excluir veterinário no Supabase:', errSupa);
+    }
+  }
+
+  if (sucesso) {
+    showToast('Cadastro Removido!', `O cadastro de Dr(a). ${nomeExibicao} foi removido com sucesso.`, 'fa-trash-can', 'info');
+    carregarVeterinariosAdmin();
+  } else {
+    showToast('Falha na Exclusão', 'Não foi possível excluir o cadastro no momento. Tente novamente.', 'fa-circle-xmark', 'danger');
+  }
+}
+
 // Expõe no escopo global
 window.salvarSessaoVet = salvarSessaoVet;
 window.obterSessaoVet = obterSessaoVet;
@@ -1026,6 +1144,8 @@ window.obterSessaoAdmin = obterSessaoAdmin;
 window.encerrarSessaoAdmin = encerrarSessaoAdmin;
 window.carregarVeterinariosAdmin = carregarVeterinariosAdmin;
 window.salvarNovoVeterinarioAdmin = salvarNovoVeterinarioAdmin;
+window.alternarStatusVeterinarioAdmin = alternarStatusVeterinarioAdmin;
+window.excluirVeterinarioAdmin = excluirVeterinarioAdmin;
 window.salvarAutorizacaoClinica = salvarAutorizacaoClinica;
 window.obterAutorizacaoClinica = obterAutorizacaoClinica;
 window.limparAutorizacaoClinica = limparAutorizacaoClinica;

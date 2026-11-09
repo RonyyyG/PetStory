@@ -466,4 +466,110 @@ public class PetStoryHttpServerTest {
         HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
         assertEquals(400, resp.statusCode());
     }
+
+    @Test
+    @DisplayName("PATCH /api/admin/veterinarios deve exigir ID do veterinário")
+    public void testAdminAtualizarStatusSemId() throws Exception {
+        JsonObject body = new JsonObject();
+        body.addProperty("ativo", false);
+
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/admin/veterinarios"))
+                .header("Content-Type", "application/json")
+                .method("PATCH", HttpRequest.BodyPublishers.ofString(body.toString(), StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+        assertEquals(400, resp.statusCode());
+
+        JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
+        assertFalse(json.get("sucesso").getAsBoolean());
+    }
+
+    @Test
+    @DisplayName("DELETE /api/admin/veterinarios deve exigir ID do veterinário")
+    public void testAdminExcluirSemId() throws Exception {
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/admin/veterinarios"))
+                .DELETE()
+                .build();
+
+        HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+        assertEquals(400, resp.statusCode());
+
+        JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
+        assertFalse(json.get("sucesso").getAsBoolean());
+    }
+
+    @Test
+    @DisplayName("Ciclo de vida do veterinário: cadastro, alteração de status (PATCH) e exclusão (DELETE)")
+    public void testAdminCicloDeVidaVeterinario() throws Exception {
+        // 1. Cadastra veterinário temporário
+        JsonObject bodyCad = new JsonObject();
+        bodyCad.addProperty("nome", "Dr. Teste Ciclo Vida");
+        bodyCad.addProperty("crmv", "99.771");
+        bodyCad.addProperty("uf", "SP");
+        bodyCad.addProperty("clinica", "Hospital Teste");
+        bodyCad.addProperty("especialidade", "Clínico Geral");
+        bodyCad.addProperty("email", "teste.ciclovida." + System.currentTimeMillis() + "@vet.com");
+        bodyCad.addProperty("senha", "teste123");
+
+        HttpRequest reqCad = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/admin/veterinarios"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(bodyCad.toString(), StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> respCad = client.send(reqCad, HttpResponse.BodyHandlers.ofString());
+        assertEquals(201, respCad.statusCode());
+
+        JsonObject jsonCad = JsonParser.parseString(respCad.body()).getAsJsonObject();
+        assertTrue(jsonCad.get("sucesso").getAsBoolean());
+        String vetId = jsonCad.getAsJsonObject("veterinario").get("id").getAsString();
+        assertNotNull(vetId);
+
+        // 2. Desativa o veterinário via PATCH /api/admin/veterinarios/{id}
+        JsonObject bodyPatchDesativar = new JsonObject();
+        bodyPatchDesativar.addProperty("ativo", false);
+
+        HttpRequest reqDesativar = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/admin/veterinarios/" + vetId))
+                .header("Content-Type", "application/json")
+                .method("PATCH", HttpRequest.BodyPublishers.ofString(bodyPatchDesativar.toString(), StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> respDesativar = client.send(reqDesativar, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, respDesativar.statusCode());
+        JsonObject jsonDesativar = JsonParser.parseString(respDesativar.body()).getAsJsonObject();
+        assertTrue(jsonDesativar.get("sucesso").getAsBoolean());
+        assertFalse(jsonDesativar.get("ativo").getAsBoolean());
+
+        // 3. Reativa o veterinário via PATCH com ID no body
+        JsonObject bodyPatchReativar = new JsonObject();
+        bodyPatchReativar.addProperty("id", vetId);
+        bodyPatchReativar.addProperty("ativo", true);
+
+        HttpRequest reqReativar = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/admin/veterinarios"))
+                .header("Content-Type", "application/json")
+                .method("PATCH", HttpRequest.BodyPublishers.ofString(bodyPatchReativar.toString(), StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> respReativar = client.send(reqReativar, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, respReativar.statusCode());
+        JsonObject jsonReativar = JsonParser.parseString(respReativar.body()).getAsJsonObject();
+        assertTrue(jsonReativar.get("sucesso").getAsBoolean());
+        assertTrue(jsonReativar.get("ativo").getAsBoolean());
+
+        // 4. Exclui o veterinário via DELETE /api/admin/veterinarios/{id}
+        HttpRequest reqDel = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/admin/veterinarios/" + vetId))
+                .DELETE()
+                .build();
+
+        HttpResponse<String> respDel = client.send(reqDel, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, respDel.statusCode());
+        JsonObject jsonDel = JsonParser.parseString(respDel.body()).getAsJsonObject();
+        assertTrue(jsonDel.get("sucesso").getAsBoolean());
+    }
 }

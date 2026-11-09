@@ -37,8 +37,12 @@ public class AdminVetHandler implements HttpHandler {
             tratarListagem(exchange);
         } else if ("POST".equals(method)) {
             tratarCadastro(exchange);
+        } else if ("PATCH".equals(method)) {
+            tratarAtualizacaoStatus(exchange);
+        } else if ("DELETE".equals(method)) {
+            tratarExclusao(exchange);
         } else {
-            HttpHelper.enviarErro(exchange, 405, "Método não permitido", "Utilize GET ou POST para /api/admin/veterinarios");
+            HttpHelper.enviarErro(exchange, 405, "Método não permitido", "Utilize GET, POST, PATCH ou DELETE para /api/admin/veterinarios");
         }
     }
 
@@ -116,6 +120,95 @@ public class AdminVetHandler implements HttpHandler {
             HttpHelper.enviarErro(exchange, 401, "Acesso não autorizado", e.getMessage());
         } catch (Exception e) {
             HttpHelper.enviarErro(exchange, 500, "Erro interno ao cadastrar veterinário", e.getMessage());
+        }
+    }
+
+    private String extrairId(HttpExchange exchange, JsonObject body) {
+        String path = exchange.getRequestURI().getPath();
+        if (path.endsWith("/")) {
+            path = path.substring(0, path.length() - 1);
+        }
+        String[] partes = path.split("/");
+        // Partes para /api/admin/veterinarios/{id}: ["", "api", "admin", "veterinarios", "{id}"]
+        if (partes.length >= 5 && !partes[4].trim().isEmpty()) {
+            return partes[4].trim();
+        }
+
+        String query = exchange.getRequestURI().getQuery();
+        if (query != null && !query.trim().isEmpty()) {
+            for (String param : query.split("&")) {
+                if (param.startsWith("id=")) {
+                    return param.substring(3).trim();
+                }
+            }
+        }
+
+        if (body != null && body.has("id") && !body.get("id").isJsonNull()) {
+            return body.get("id").getAsString().trim();
+        }
+
+        return null;
+    }
+
+    private void tratarAtualizacaoStatus(HttpExchange exchange) throws IOException {
+        try {
+            JsonObject body = HttpHelper.lerCorpoJson(exchange);
+            String id = extrairId(exchange, body);
+
+            if (id == null || id.isEmpty()) {
+                throw new IllegalArgumentException("O ID do médico-veterinário é obrigatório para atualização de status.");
+            }
+
+            boolean ativo = true;
+            if (body.has("ativo") && !body.get("ativo").isJsonNull()) {
+                ativo = body.get("ativo").getAsBoolean();
+            }
+
+            boolean sucesso = supabaseClient.atualizarStatusVeterinario(id, ativo);
+            if (!sucesso) {
+                throw new RuntimeException("Não foi possível atualizar o status do veterinário no banco de dados.");
+            }
+
+            JsonObject resp = new JsonObject();
+            resp.addProperty("sucesso", true);
+            resp.addProperty("mensagem", ativo 
+                    ? "Credencial do médico-veterinário ativada com sucesso." 
+                    : "Acesso do médico-veterinário suspenso/desativado.");
+            resp.addProperty("id", id);
+            resp.addProperty("ativo", ativo);
+
+            HttpHelper.enviarJson(exchange, 200, resp);
+        } catch (IllegalArgumentException e) {
+            HttpHelper.enviarErro(exchange, 400, "Dados inválidos", e.getMessage());
+        } catch (Exception e) {
+            HttpHelper.enviarErro(exchange, 500, "Erro interno ao atualizar status do veterinário", e.getMessage());
+        }
+    }
+
+    private void tratarExclusao(HttpExchange exchange) throws IOException {
+        try {
+            JsonObject body = HttpHelper.lerCorpoJson(exchange);
+            String id = extrairId(exchange, body);
+
+            if (id == null || id.isEmpty()) {
+                throw new IllegalArgumentException("O ID do médico-veterinário é obrigatório para exclusão.");
+            }
+
+            boolean sucesso = supabaseClient.excluirVeterinario(id);
+            if (!sucesso) {
+                throw new RuntimeException("Não foi possível excluir o veterinário no banco de dados.");
+            }
+
+            JsonObject resp = new JsonObject();
+            resp.addProperty("sucesso", true);
+            resp.addProperty("mensagem", "Médico-veterinário removido com sucesso.");
+            resp.addProperty("id", id);
+
+            HttpHelper.enviarJson(exchange, 200, resp);
+        } catch (IllegalArgumentException e) {
+            HttpHelper.enviarErro(exchange, 400, "Dados inválidos", e.getMessage());
+        } catch (Exception e) {
+            HttpHelper.enviarErro(exchange, 500, "Erro interno ao excluir veterinário", e.getMessage());
         }
     }
 }

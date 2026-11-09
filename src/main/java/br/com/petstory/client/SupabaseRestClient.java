@@ -519,6 +519,80 @@ public class SupabaseRestClient {
     }
 
     /**
+     * Atualiza o status de atividade (ativo: true/false) de um médico-veterinário no Supabase (tabela veterinarios).
+     */
+    public boolean atualizarStatusVeterinario(String id, boolean ativo) {
+        if (id == null || id.trim().isEmpty()) {
+            throw new IllegalArgumentException("O ID do médico-veterinário é obrigatório.");
+        }
+        String cleanId = id.trim();
+        try {
+            String url = SupabaseConfig.obterEndpointTabela("veterinarios")
+                    + "?id=eq." + URLEncoder.encode(cleanId, StandardCharsets.UTF_8);
+
+            JsonObject body = new JsonObject();
+            body.addProperty("ativo", ativo);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(6))
+                    .header("apikey", apiKey)
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Content-Type", "application/json; charset=UTF-8")
+                    .header("Prefer", "return=representation")
+                    .method("PATCH", HttpRequest.BodyPublishers.ofString(body.toString(), StandardCharsets.UTF_8))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200 || response.statusCode() == 204) {
+                System.out.println("[SupabaseClient] Status do veterinário [" + cleanId + "] atualizado para ativo=" + ativo);
+                return true;
+            } else {
+                System.err.println("[SupabaseClient] Erro ao atualizar status do veterinário (HTTP " + response.statusCode() + "): " + response.body());
+                return false;
+            }
+        } catch (Exception e) {
+            System.err.println("[SupabaseClient] Exceção ao atualizar status do veterinário: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Remove permanentemente o registro de um médico-veterinário da tabela 'veterinarios' do Supabase.
+     */
+    public boolean excluirVeterinario(String id) {
+        if (id == null || id.trim().isEmpty()) {
+            throw new IllegalArgumentException("O ID do médico-veterinário é obrigatório.");
+        }
+        String cleanId = id.trim();
+        try {
+            String url = SupabaseConfig.obterEndpointTabela("veterinarios")
+                    + "?id=eq." + URLEncoder.encode(cleanId, StandardCharsets.UTF_8);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(6))
+                    .header("apikey", apiKey)
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Accept", "application/json")
+                    .DELETE()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200 || response.statusCode() == 204) {
+                System.out.println("[SupabaseClient] Veterinário [" + cleanId + "] excluído com sucesso do Supabase.");
+                return true;
+            } else {
+                System.err.println("[SupabaseClient] Erro ao excluir veterinário (HTTP " + response.statusCode() + "): " + response.body());
+                return false;
+            }
+        } catch (Exception e) {
+            System.err.println("[SupabaseClient] Exceção ao excluir veterinário: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Salva um código OTP no Supabase (tabela autorizacoes_otp) com expiração de 2 horas.
      */
     public JsonObject salvarOtpNoBanco(String petId, String codigoOtp, LocalDateTime expiraEm) {

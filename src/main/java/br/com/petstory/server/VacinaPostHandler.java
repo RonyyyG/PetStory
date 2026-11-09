@@ -106,7 +106,7 @@ public class VacinaPostHandler implements HttpHandler {
             } catch (Exception ignored) {}
         }
 
-        String crmv = "Dr. Ricardo Mendonça (CRMV-SP 38.412)";
+        String crmv = "Médico-Veterinário Habilitado";
         if (body.has("veterinario_crmv")) crmv = body.get("veterinario_crmv").getAsString();
         else if (body.has("veterinarioResponsavel")) crmv = body.get("veterinarioResponsavel").getAsString();
         else if (body.has("crmv")) crmv = body.get("crmv").getAsString();

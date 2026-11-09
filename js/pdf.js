@@ -151,10 +151,10 @@ async function imprimirReceitaOficial() {
     } catch (e) { return null; }
   })();
 
-  const docNome = vetSession?.nome || 'Dr. Ricardo Mendonça';
-  const docCrmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV-SP 38.412');
-  const docClinica = vetSession?.clinica || 'Hospital Veterinário São Francisco';
-  const docEspec = vetSession?.especialidade || 'Clínico Geral & Cirurgião';
+  const docNome = vetSession?.nome || 'Médico-Veterinário Responsável';
+  const docCrmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV Ativo');
+  const docClinica = vetSession?.clinica || 'Centro Clínico Veterinário';
+  const docEspec = vetSession?.especialidade || 'Clínica Geral';
 
   let petId = typeof resolverPetIdSupabase === 'function'
     ? resolverPetIdSupabase(pacienteAtual?.id || session?.pet?.id || pacienteAtual?.tag || session?.pet?.tag)

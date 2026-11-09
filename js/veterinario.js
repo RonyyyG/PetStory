@@ -75,7 +75,7 @@ async function validarAcessoClinicoVeterinario(tagDigitada, otpDigitado) {
         return raw ? JSON.parse(raw) : null;
       } catch (e) { return null; }
     })();
-    const crmvEnvio = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV-SP 38.412');
+    const crmvEnvio = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV Ativo');
 
     const resJava = await fetch(`${BACKEND_URL}/api/otp/validar`, {
       method: 'POST',
@@ -261,10 +261,10 @@ function atualizarCredencialVetScanner() {
   const docCrmvEl = document.getElementById('vet-scanner-doctor-crmv');
   const docClinicEl = document.getElementById('vet-scanner-doctor-clinic');
 
-  const nome = vetSession?.nome || 'Dr. Ricardo Mendonça';
-  const crmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV-SP 38.412');
-  const clinica = vetSession?.clinica || 'Hospital Veterinário São Francisco';
-  const especialidade = vetSession?.especialidade || 'Clínico Geral & Cirurgião';
+  const nome = vetSession?.nome || 'Médico-Veterinário';
+  const crmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV Ativo');
+  const clinica = vetSession?.clinica || 'Centro Clínico Veterinário';
+  const especialidade = vetSession?.especialidade || 'Clínica Geral';
 
   if (docNameEl) docNameEl.textContent = nome;
   if (docCrmvEl) docCrmvEl.textContent = crmv;
@@ -1201,8 +1201,8 @@ async function salvarModalVacina(event) {
       return raw ? JSON.parse(raw) : null;
     } catch (e) { return null; }
   })();
-  const vetNome = vetSession?.nome || 'Dr. Ricardo Mendonça';
-  const vetCrmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV-SP 38.412');
+  const vetNome = vetSession?.nome || 'Médico-Veterinário Responsável';
+  const vetCrmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV Ativo');
   const vetAssinatura = `${vetNome} (${vetCrmv})`;
 
   // 1. Adiciona na tabela do Prontuário do Veterinário
@@ -1341,8 +1341,8 @@ async function salvarModalPrescricao(event) {
       return raw ? JSON.parse(raw) : null;
     } catch (e) { return null; }
   })();
-  const vetNome = vetSession?.nome || 'Dr. Ricardo Mendonça';
-  const vetCrmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV-SP 38.412');
+  const vetNome = vetSession?.nome || 'Médico-Veterinário Responsável';
+  const vetCrmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV Ativo');
   const vetAssinatura = `${vetNome} (${vetCrmv})`;
 
   const rxPayload = {
@@ -1512,7 +1512,7 @@ async function salvarModalCirurgia(event) {
       return raw ? JSON.parse(raw) : null;
     } catch (e) { return null; }
   })();
-  const vetDefault = vetSession?.nome ? (vetSession.crmv_completo ? `${vetSession.nome} (${vetSession.crmv_completo})` : vetSession.nome) : 'Dr. Ricardo Mendonça';
+  const vetDefault = vetSession?.nome ? (vetSession.crmv_completo ? `${vetSession.nome} (${vetSession.crmv_completo})` : vetSession.nome) : 'Médico-Veterinário Cirurgião';
 
   const nome = document.getElementById('input-cirurgia-nome')?.value || 'Procedimento';
   const data = document.getElementById('input-cirurgia-data')?.value || '2027-02-15';
@@ -1815,8 +1815,8 @@ async function salvarEvolucaoClinica(event) {
       return raw ? JSON.parse(raw) : null;
     } catch (e) { return null; }
   })();
-  const vetNome = vetSession?.nome || 'Dr. Ricardo Mendonça';
-  const vetCrmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV-SP 38.412');
+  const vetNome = vetSession?.nome || 'Médico-Veterinário Responsável';
+  const vetCrmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV Ativo');
 
   try {
     await fetch(`${SUPABASE_CONFIG.url}/rest/v1/consultas_historico`, {
@@ -1899,10 +1899,10 @@ async function abrirModalEmitirReceita() {
       return raw ? JSON.parse(raw) : null;
     } catch (e) { return null; }
   })();
-  const docNome = vetSession?.nome || 'Dr. Ricardo Mendonça';
-  const docCrmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV-SP 38.412');
-  const docClinica = vetSession?.clinica || 'Hospital Veterinário São Francisco';
-  const docEspec = vetSession?.especialidade || 'Clínico Geral & Cirurgião';
+  const docNome = vetSession?.nome || 'Médico-Veterinário Responsável';
+  const docCrmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV Ativo');
+  const docClinica = vetSession?.clinica || 'Centro Clínico Veterinário';
+  const docEspec = vetSession?.especialidade || 'Clínica Geral';
 
   const modalRxClinic = document.getElementById('modal-rx-header-clinic');
   const modalRxDoctor = document.getElementById('modal-rx-header-doctor');

@@ -130,7 +130,7 @@ public class PetStoryHttpServerTest {
         JsonObject body = new JsonObject();
         body.addProperty("crmv", "38412");
         body.addProperty("uf", "SP");
-        body.addProperty("senha", "vet2026");
+        body.addProperty("senha", "123456");
 
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(BASE_URL + "/api/auth/login-vet"))

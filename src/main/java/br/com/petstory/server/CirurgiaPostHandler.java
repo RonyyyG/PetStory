@@ -72,7 +72,7 @@ public class CirurgiaPostHandler implements HttpHandler {
         }
 
         String data = body.has("data") ? body.get("data").getAsString() : null;
-        String cirurgiao = body.has("cirurgiao") ? body.get("cirurgiao").getAsString() : "Dr. Ricardo Mendonça (CRMV-SP 38.412)";
+        String cirurgiao = body.has("cirurgiao") ? body.get("cirurgiao").getAsString() : "Médico-Veterinário Cirurgião";
         String notas = body.has("notas") ? body.get("notas").getAsString() : "Jejum obrigatório de 8 horas e exames pré-operatórios.";
         String status = body.has("status") ? body.get("status").getAsString() : "Agendada";
 

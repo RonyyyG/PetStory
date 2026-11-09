@@ -8,15 +8,15 @@
 // ============================================================================
 function salvarSessaoVet(vet) {
   try {
-    const crmvRaw = vet?.crmv || '38412';
-    const crmvFormatado = (crmvRaw.toUpperCase().startsWith('CRMV') ? crmvRaw : `CRMV-${vet?.uf || 'SP'} ${crmvRaw}`);
+    const crmvRaw = vet?.crmv || '';
+    const crmvFormatado = crmvRaw ? (crmvRaw.toUpperCase().startsWith('CRMV') ? crmvRaw : `CRMV-${vet?.uf || 'SP'} ${crmvRaw}`) : 'CRMV Ativo';
     sessionStorage.setItem('petstory_vet_session', JSON.stringify({
       id: vet?.id || null,
-      nome: vet?.nome || 'Dr. Ricardo Mendonça',
+      nome: vet?.nome || 'Médico-Veterinário',
       crmv: crmvRaw,
       uf: vet?.uf || 'SP',
-      clinica: vet?.clinica || 'Hospital Veterinário São Francisco',
-      especialidade: vet?.especialidade || 'Clínico Geral & Cirurgião',
+      clinica: vet?.clinica || 'Centro Clínico Veterinário',
+      especialidade: vet?.especialidade || 'Clínica Geral',
       email: vet?.email || '',
       crmv_completo: crmvFormatado,
       login_at: Date.now()
@@ -589,7 +589,7 @@ async function handleLoginSubmit(event, role) {
     const ufInput = document.getElementById('login-vet-uf');
     const passInput = document.getElementById('login-vet-pass');
 
-    const crmv = crmvInput ? crmvInput.value.trim() : '38412';
+    const crmv = crmvInput ? crmvInput.value.trim() : '';
     const uf = ufInput ? ufInput.value.trim().toUpperCase() : 'SP';
     const senha = passInput ? passInput.value.trim() : '';
 
@@ -694,9 +694,6 @@ async function handleLoginSubmit(event, role) {
       let senhaValida = hashBanco === hashHex.toLowerCase();
 
       if (!senhaValida && hashBanco === senha.trim()) {
-        senhaValida = true;
-      }
-      if (!senhaValida && (senha === '123456' || senha === 'vet2026') && (cleanNum === '38412' || vetEncontrado.email === 'ricardo.mendonca@vet.com')) {
         senhaValida = true;
       }
 

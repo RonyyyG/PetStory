@@ -73,7 +73,7 @@ public class PrescricaoPostHandler implements HttpHandler {
         String tipo = body.has("tipo") ? body.get("tipo").getAsString() : "Oral";
         String indicacao = body.has("indicacao") ? body.get("indicacao").getAsString() : "Terapêutica clínica animal";
         String posologia = body.has("posologia") ? body.get("posologia").getAsString() : "Conforme prescrição médica";
-        String veterinario = body.has("veterinario") ? body.get("veterinario").getAsString() : "Dr. Ricardo Mendonça (CRMV-SP 38.412)";
+        String veterinario = body.has("veterinario") ? body.get("veterinario").getAsString() : "Médico-Veterinário Responsável";
         String status = body.has("status") ? body.get("status").getAsString() : "Ativo";
 
         try {

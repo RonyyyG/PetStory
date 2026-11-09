@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * Espelha a tabela "veterinarios" do Supabase:
  * - id (UUID)
  * - nome
- * - crmv (ex: "CRMV-SP 38.412")
+ * - crmv (ex: "CRMV-SP 12.345")
  * - clinica
  * - especialidade
  * - created_at

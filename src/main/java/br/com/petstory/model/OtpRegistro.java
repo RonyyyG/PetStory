@@ -63,7 +63,7 @@ public class OtpRegistro {
 
     /**
      * CRMV do veterinário que utilizou o código para auditoria e rastreabilidade LGPD.
-     * Exemplo: "CRMV-SP 38.412"
+     * Exemplo: "CRMV-SP 12.345"
      */
     private String veterinarioCrmv;
 

@@ -33,7 +33,7 @@ public class OtpValidarHandler implements HttpHandler {
             JsonObject body = HttpHelper.lerCorpoJson(exchange);
             String tag = body.has("tag") ? body.get("tag").getAsString() : null;
             String codigoOtp = body.has("codigoOtp") ? body.get("codigoOtp").getAsString() : null;
-            String crmv = body.has("crmv") ? body.get("crmv").getAsString() : "CRMV-SP 38.412";
+            String crmv = body.has("crmv") ? body.get("crmv").getAsString() : "CRMV Ativo";
 
             JsonObject resultado = otpService.validarOtpParaAtendimento(tag, codigoOtp, crmv);
             HttpHelper.enviarJson(exchange, 200, resultado);

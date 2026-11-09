@@ -9,7 +9,7 @@ Frontend moderno, responsivo e interativo desenvolvido em **HTML5**, **CSS3** e 
 O projeto é estruturado em uma **Single Page Application (SPA)** de alta performance, permitindo alternar instantaneamente entre as 4 visões do ecossistema PetStory:
 
 ### 1. 🏥 Validação Veterinária & Leitor de Tag (`#vet-scan`)
-- Interface clínica para o médico-veterinário (Dr. Ricardo Mendonça - CRMV-SP 38.412).
+- Interface clínica para o médico-veterinário com auditoria profissional e credenciamento dinâmico.
 - **Leitor visual simulado de QR Code** com animação de laser holográfico e cantoneiras.
 - Botão interativo **"Simular Leitura do QR Code"** e **"Simular Aproximação NFC"** que realizam a leitura e abrem o prontuário automaticamente.
 - Campo de digitação manual para **Código da Tag** (Ex: `PST-9921`) ou **Microchip ISO 11784** com chips de preenchimento rápido.

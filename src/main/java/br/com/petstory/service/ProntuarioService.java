@@ -67,17 +67,17 @@ public class ProntuarioService {
         vaxThor.add(criarVacinaModel(
                 "vax-thor-01", THOR_ID, "V10 Polivalente Canina",
                 LocalDate.of(2025, 11, 15), LocalDate.of(2026, 11, 15),
-                "Zoetis • Lote 5849-B2", "Dr. Ricardo (CRMV-SP 38.412)"
+                "Zoetis • Lote 5849-B2", "Corpo Clínico Veterinário"
         ));
         vaxThor.add(criarVacinaModel(
                 "vax-thor-02", THOR_ID, "Antirrábica Defensor",
                 LocalDate.of(2026, 1, 10), LocalDate.of(2027, 1, 10),
-                "Zoetis • Lote 9012-K4", "Dr. André (CRMV-SP 31.020)"
+                "Zoetis • Lote 9012-K4", "Corpo Clínico Veterinário"
         ));
         vaxThor.add(criarVacinaModel(
                 "vax-thor-03", THOR_ID, "Bronchi-Shield Oral (Gripe Canina)",
                 LocalDate.of(2025, 11, 15), LocalDate.of(2026, 11, 15),
-                "Boehringer • Lote 7714-X1", "Dr. Ricardo (CRMV-SP 38.412)"
+                "Boehringer • Lote 7714-X1", "Corpo Clínico Veterinário"
         ));
         vaxThor.add(criarVacinaModel(
                 "vax-thor-04", THOR_ID, "Giardiavax (Giárdia)",
@@ -184,7 +184,7 @@ public class ProntuarioService {
             vacina.setLoteFabricante("Lote Padrão");
         }
         if (vacina.getVeterinarioResponsavel() == null || vacina.getVeterinarioResponsavel().trim().isEmpty()) {
-            vacina.setVeterinarioResponsavel("Dr. Ricardo Mendonça (CRMV-SP 38.412)");
+            vacina.setVeterinarioResponsavel("Médico-Veterinário Responsável");
         }
 
         // Calcula o status sanitário real via regra de negócio
@@ -266,7 +266,7 @@ public class ProntuarioService {
             String lote = obj.has("laboratorio_lote") && !obj.get("laboratorio_lote").isJsonNull() ? obj.get("laboratorio_lote").getAsString() :
                          (obj.has("lote") && !obj.get("lote").isJsonNull() ? obj.get("lote").getAsString() : "Lote Padrão");
             String vet = obj.has("veterinario_crmv") && !obj.get("veterinario_crmv").isJsonNull() ? obj.get("veterinario_crmv").getAsString() :
-                        (obj.has("veterinarioResponsavel") && !obj.get("veterinarioResponsavel").isJsonNull() ? obj.get("veterinarioResponsavel").getAsString() : "CRMV-SP 38.412");
+                        (obj.has("veterinarioResponsavel") && !obj.get("veterinarioResponsavel").isJsonNull() ? obj.get("veterinarioResponsavel").getAsString() : "CRMV Ativo");
 
             LocalDate apl = null;
             if (obj.has("data_aplicacao") && !obj.get("data_aplicacao").isJsonNull()) {
@@ -316,7 +316,7 @@ public class ProntuarioService {
             cirurgia.setData(LocalDate.now().plusMonths(1).format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
         }
         if (cirurgia.getCirurgiao() == null || cirurgia.getCirurgiao().trim().isEmpty()) {
-            cirurgia.setCirurgiao("Dr. Ricardo Mendonça (CRMV-SP 38.412)");
+            cirurgia.setCirurgiao("Médico-Veterinário Cirurgião");
         }
         if (cirurgia.getStatus() == null || cirurgia.getStatus().trim().isEmpty()) {
             cirurgia.setStatus("Agendada");
@@ -355,7 +355,7 @@ public class ProntuarioService {
             prescricao.setId("rx-" + UUID.randomUUID().toString());
         }
         if (prescricao.getVeterinario() == null || prescricao.getVeterinario().trim().isEmpty()) {
-            prescricao.setVeterinario("Dr. Ricardo Mendonça (CRMV-SP 38.412)");
+            prescricao.setVeterinario("Médico-Veterinário Responsável");
         }
         if (prescricao.getStatus() == null || prescricao.getStatus().trim().isEmpty()) {
             prescricao.setStatus("Ativo");

@@ -297,14 +297,6 @@ public class AuthService {
             }
         }
 
-        // Compatibilidade com testes legados se a senha for "vet2026" ou "123456" para Dr. Ricardo
-        if (!senhaValida && ("123456".equals(senha.trim()) || "vet2026".equals(senha.trim()))) {
-            String vetEmail = vet.has("email") && !vet.get("email").isJsonNull() ? vet.get("email").getAsString() : "";
-            if (vetEmail.equalsIgnoreCase("ricardo.mendonca@vet.com") || query.contains("38412")) {
-                senhaValida = true;
-            }
-        }
-
         if (!senhaValida) {
             throw new SecurityException("Senha incorreta para o médico-veterinário autenticado.");
         }

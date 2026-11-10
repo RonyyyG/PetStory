@@ -48,6 +48,14 @@ public class SupabaseConfig {
     );
 
     /**
+     * Chave de autorização administrativa para chamadas RPC do Painel Admin no Supabase.
+     */
+    public static final String ADMIN_RPC_KEY = obterVariavelOuPadrao(
+        "ADMIN_RPC_KEY",
+        "PetStoryAdmin#2026"
+    );
+
+    /**
      * URL de Conexão Direta JDBC (PostgreSQL).
      * 
      * Se você desejar conectar o Java diretamente via driver PostgreSQL (JDBC):
@@ -76,6 +84,21 @@ public class SupabaseConfig {
             return base + "/" + nomeTabela;
         }
         return base + "/rest/v1/" + nomeTabela;
+    }
+
+    /**
+     * Retorna a URL completa para invocação de uma função RPC segura do PostgreSQL no Supabase.
+     * Exemplo: obterEndpointRpc("rpc_autenticar_tutor") -> https://...supabase.co/rest/v1/rpc/rpc_autenticar_tutor
+     */
+    public static String obterEndpointRpc(String nomeFuncao) {
+        String base = SUPABASE_URL.trim();
+        while (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        if (base.endsWith("/rest/v1")) {
+            return base + "/rpc/" + nomeFuncao;
+        }
+        return base + "/rest/v1/rpc/" + nomeFuncao;
     }
 
     /**

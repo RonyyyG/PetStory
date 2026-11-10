@@ -7,7 +7,8 @@ const BACKEND_URL = 'http://localhost:8080';
 
 const SUPABASE_CONFIG = {
   url: 'https://tiqzidcqqscarcdgbcgr.supabase.co',
-  anonKey: 'sb_publishable_92MgWBkRVu6i3vmS2xTWdw_io6Gk-wj'
+  anonKey: 'sb_publishable_92MgWBkRVu6i3vmS2xTWdw_io6Gk-wj',
+  adminRpcKey: 'PetStoryAdmin#2026'
 };
 
 const SCREENS = {
@@ -61,6 +62,33 @@ function renderQrCodeLocal(containerId, urlText) {
   container.appendChild(img);
 }
 
+/**
+ * Gera o hash criptográfico padrão do PetStory (SHA-256 com salt 'PetStory#2026$').
+ */
+async function gerarHashSenhaLocal(senha) {
+  const salted = 'PetStory#2026$' + (senha || '').trim();
+  const encoder = new TextEncoder();
+  const dataBytes = encoder.encode(salted);
+  const hashBuf = await crypto.subtle.digest('SHA-256', dataBytes);
+  return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Invoca uma função RPC segura (SECURITY DEFINER) no Supabase via /rest/v1/rpc/{funcao}.
+ */
+async function chamarSupabaseRpc(nomeFuncao, params = {}) {
+  const resp = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/rpc/${nomeFuncao}`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_CONFIG.anonKey,
+      'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(params)
+  });
+  return resp;
+}
+
 // Expõe no escopo global
 window.BACKEND_URL = BACKEND_URL;
 window.SUPABASE_CONFIG = SUPABASE_CONFIG;
@@ -69,3 +97,5 @@ window.DEFAULT_PET_NEUTRAL_AVATAR = DEFAULT_PET_NEUTRAL_AVATAR;
 window.DEFAULT_PET_PHOTO = DEFAULT_PET_PHOTO;
 window.formatarDataBr = formatarDataBr;
 window.renderQrCodeLocal = renderQrCodeLocal;
+window.gerarHashSenhaLocal = gerarHashSenhaLocal;
+window.chamarSupabaseRpc = chamarSupabaseRpc;

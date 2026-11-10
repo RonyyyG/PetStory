@@ -60,7 +60,81 @@ public class SupabaseRestClient {
     }
 
     /**
-     * Busca um tutor no Supabase por e-mail.
+     * Invoca uma função RPC segura (SECURITY DEFINER) no Supabase via POST /rest/v1/rpc/{funcao}.
+     */
+    private HttpResponse<String> chamarRpc(String nomeFuncao, JsonObject params) throws Exception {
+        String url = SupabaseConfig.obterEndpointRpc(nomeFuncao);
+        String bodyStr = (params != null ? params.toString() : "{}");
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(Duration.ofSeconds(8))
+                .header("apikey", apiKey)
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .header("Accept", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(bodyStr, StandardCharsets.UTF_8))
+                .build();
+
+        return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    /**
+     * Autentica um tutor via função RPC segura sem expor a tabela tutores ou senha_hash.
+     */
+    public JsonObject autenticarTutorRpc(String email, String senhaHash) {
+        if (email == null || email.trim().isEmpty() || senhaHash == null) {
+            return null;
+        }
+        try {
+            JsonObject params = new JsonObject();
+            params.addProperty("p_email", email.trim().toLowerCase());
+            params.addProperty("p_senha_hash", senhaHash.trim());
+
+            HttpResponse<String> response = chamarRpc("rpc_autenticar_tutor", params);
+            if (response.statusCode() == 200) {
+                JsonObject result = JsonParser.parseString(response.body()).getAsJsonObject();
+                if (result.has("tutor") && result.get("tutor").isJsonObject()) {
+                    JsonObject tutor = result.getAsJsonObject("tutor");
+                    cacheTutores.put(email.trim().toLowerCase(), tutor);
+                    if (tutor.has("id")) {
+                        cacheTutores.put(tutor.get("id").getAsString(), tutor);
+                    }
+                }
+                return result;
+            } else {
+                System.err.println("[SupabaseClient] HTTP " + response.statusCode() + " em rpc_autenticar_tutor: " + response.body());
+            }
+        } catch (Exception e) {
+            System.err.println("[SupabaseClient] Aviso em rpc_autenticar_tutor: " + e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Redefine a senha do tutor via função RPC segura após validar o desafio de identidade no banco.
+     */
+    public JsonObject redefinirSenhaTutorRpc(String email, String desafio, String novoSenhaHash) {
+        try {
+            JsonObject params = new JsonObject();
+            params.addProperty("p_email", email.trim().toLowerCase());
+            params.addProperty("p_desafio", desafio.trim());
+            params.addProperty("p_novo_senha_hash", novoSenhaHash.trim());
+
+            HttpResponse<String> response = chamarRpc("rpc_redefinir_senha_tutor", params);
+            if (response.statusCode() == 200) {
+                return JsonParser.parseString(response.body()).getAsJsonObject();
+            } else {
+                System.err.println("[SupabaseClient] HTTP " + response.statusCode() + " em rpc_redefinir_senha_tutor: " + response.body());
+            }
+        } catch (Exception e) {
+            System.err.println("[SupabaseClient] Aviso em rpc_redefinir_senha_tutor: " + e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Busca um tutor no Supabase por e-mail (para resiliência/cache em testes unitários).
      */
     public JsonObject buscarTutorPorEmail(String email) {
         if (email == null || email.trim().isEmpty()) {
@@ -342,42 +416,31 @@ public class SupabaseRestClient {
     }
 
     /**
-     * Busca dados do tutor por ID.
+     * Busca dados públicos seguros do tutor por ID via RPC (sem e-mail nem senha_hash).
      */
     public JsonObject buscarTutorPorId(String tutorId) {
         if (tutorId == null || tutorId.trim().isEmpty()) {
             return null;
         }
         try {
-            String url = SupabaseConfig.obterEndpointTabela("tutores")
-                    + "?id=eq." + URLEncoder.encode(tutorId.trim(), StandardCharsets.UTF_8)
-                    + "&select=*";
+            JsonObject params = new JsonObject();
+            params.addProperty("p_tutor_id", tutorId.trim());
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(6))
-                    .header("apikey", apiKey)
-                    .header("Authorization", "Bearer " + apiKey)
-                    .header("Accept", "application/json")
-                    .GET()
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200) {
-                JsonArray array = JsonParser.parseString(response.body()).getAsJsonArray();
-                if (!array.isEmpty()) {
-                    return array.get(0).getAsJsonObject();
+            HttpResponse<String> response = chamarRpc("rpc_obter_tutor_publico", params);
+            if (response.statusCode() == 200 && response.body() != null && !response.body().trim().equals("null")) {
+                JsonElement el = JsonParser.parseString(response.body());
+                if (el.isJsonObject()) {
+                    return el.getAsJsonObject();
                 }
             }
         } catch (Exception e) {
-            System.err.println("[SupabaseClient] Aviso ao buscar tutor por ID: " + e.getMessage());
+            System.err.println("[SupabaseClient] Aviso ao buscar tutor público por ID: " + e.getMessage());
         }
 
         if ("1d41b141-75a1-4ea8-b398-4c5ff5ece979".equals(tutorId)) {
             JsonObject m = new JsonObject();
             m.addProperty("id", tutorId);
             m.addProperty("nome", "Mariana Vasconcelos");
-            m.addProperty("email", "mariana@email.com");
             m.addProperty("telefone_emergencia", "(11) 98765-4321");
             m.addProperty("cidade", "São Paulo - SP");
             return m;
@@ -385,7 +448,6 @@ public class SupabaseRestClient {
             JsonObject r = new JsonObject();
             r.addProperty("id", tutorId);
             r.addProperty("nome", "Rafael Martins Oliveira");
-            r.addProperty("email", "rafael.teste@example.com");
             r.addProperty("telefone_emergencia", "(00) 90000-1234");
             r.addProperty("cidade", "Caruaru - PE");
             return r;
@@ -395,8 +457,31 @@ public class SupabaseRestClient {
     }
 
     /**
-     * Busca veterinário por CRMV (número) ou por E-mail.
-     * Trata variações como "45120", "45.120", "CRMV-SP 45.120", "doutor@clinica.com", etc.
+     * Autentica o médico-veterinário diretamente via função RPC segura (não expõe senha_hash).
+     */
+    public JsonObject autenticarVeterinarioRpc(String identificador, String senhaHash) {
+        if (identificador == null || identificador.trim().isEmpty() || senhaHash == null) {
+            return null;
+        }
+        try {
+            JsonObject params = new JsonObject();
+            params.addProperty("p_identificador", identificador.trim());
+            params.addProperty("p_senha_hash", senhaHash.trim());
+
+            HttpResponse<String> response = chamarRpc("rpc_autenticar_veterinario", params);
+            if (response.statusCode() == 200) {
+                return JsonParser.parseString(response.body()).getAsJsonObject();
+            } else {
+                System.err.println("[SupabaseClient] HTTP " + response.statusCode() + " em rpc_autenticar_veterinario: " + response.body());
+            }
+        } catch (Exception e) {
+            System.err.println("[SupabaseClient] Aviso em rpc_autenticar_veterinario: " + e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Busca veterinário por CRMV (número) ou por E-mail (uso administrativo/legado).
      */
     public JsonObject buscarVeterinarioPorCrmvOuEmail(String crmvOuEmail, String uf) {
         if (crmvOuEmail == null || crmvOuEmail.trim().isEmpty()) {
@@ -406,41 +491,22 @@ public class SupabaseRestClient {
         boolean isEmail = query.contains("@");
         String cleanNum = query.replaceAll("\\D", "");
 
-        try {
-            String url = SupabaseConfig.obterEndpointTabela("veterinarios") + "?select=*";
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(6))
-                    .header("apikey", apiKey)
-                    .header("Authorization", "Bearer " + apiKey)
-                    .header("Accept", "application/json")
-                    .GET()
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200) {
-                JsonArray array = JsonParser.parseString(response.body()).getAsJsonArray();
-                for (JsonElement el : array) {
-                    JsonObject vet = el.getAsJsonObject();
-                    if (isEmail) {
-                        String email = vet.has("email") && !vet.get("email").isJsonNull() ? vet.get("email").getAsString() : "";
-                        if (email.equalsIgnoreCase(query)) {
-                            return vet;
-                        }
-                    } else {
-                        String vetCrmv = vet.has("crmv") && !vet.get("crmv").isJsonNull() ? vet.get("crmv").getAsString() : "";
-                        String vetNumOnly = vetCrmv.replaceAll("\\D", "");
-                        if (!cleanNum.isEmpty() && (vetNumOnly.equals(cleanNum) || vetNumOnly.contains(cleanNum))) {
-                            return vet;
-                        }
-                    }
+        JsonArray lista = listarVeterinarios();
+        for (JsonElement el : lista) {
+            JsonObject vet = el.getAsJsonObject();
+            if (isEmail) {
+                String email = vet.has("email") && !vet.get("email").isJsonNull() ? vet.get("email").getAsString() : "";
+                if (email.equalsIgnoreCase(query)) {
+                    return vet;
+                }
+            } else {
+                String vetCrmv = vet.has("crmv") && !vet.get("crmv").isJsonNull() ? vet.get("crmv").getAsString() : "";
+                String vetNumOnly = vetCrmv.replaceAll("\\D", "");
+                if (!cleanNum.isEmpty() && (vetNumOnly.equals(cleanNum) || vetNumOnly.contains(cleanNum))) {
+                    return vet;
                 }
             }
-        } catch (Exception e) {
-            System.err.println("[SupabaseClient] Aviso ao buscar veterinário no Supabase: " + e.getMessage());
         }
-
-        // Se não localizado no Supabase
         return null;
     }
 
@@ -449,7 +515,7 @@ public class SupabaseRestClient {
     }
 
     /**
-     * Cadastra um novo médico-veterinário no Supabase (tabela veterinarios).
+     * Cadastra um novo médico-veterinário no Supabase via função RPC segura do Admin.
      */
     public JsonObject cadastrarVeterinario(JsonObject novoVet) {
         if (novoVet == null) {
@@ -457,69 +523,58 @@ public class SupabaseRestClient {
         }
 
         try {
-            String url = SupabaseConfig.obterEndpointTabela("veterinarios");
-            String jsonBody = novoVet.toString();
+            JsonObject params = new JsonObject();
+            params.addProperty("p_admin_chave", SupabaseConfig.ADMIN_RPC_KEY);
+            params.addProperty("p_nome", novoVet.has("nome") ? novoVet.get("nome").getAsString() : "");
+            params.addProperty("p_crmv", novoVet.has("crmv") ? novoVet.get("crmv").getAsString() : "");
+            params.addProperty("p_clinica", novoVet.has("clinica") ? novoVet.get("clinica").getAsString() : "");
+            params.addProperty("p_especialidade", novoVet.has("especialidade") ? novoVet.get("especialidade").getAsString() : "");
+            params.addProperty("p_email", novoVet.has("email") ? novoVet.get("email").getAsString() : "");
+            params.addProperty("p_senha_hash", novoVet.has("senha_hash") ? novoVet.get("senha_hash").getAsString() : "");
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(8))
-                    .header("apikey", apiKey)
-                    .header("Authorization", "Bearer " + apiKey)
-                    .header("Content-Type", "application/json; charset=UTF-8")
-                    .header("Prefer", "return=representation")
-                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 201 || response.statusCode() == 200) {
-                JsonArray arr = JsonParser.parseString(response.body()).getAsJsonArray();
-                if (arr.size() > 0) {
-                    JsonObject saved = arr.get(0).getAsJsonObject();
-                    System.out.println("[SupabaseClient] Veterinário persistido no Supabase: " 
-                            + (saved.has("nome") ? saved.get("nome").getAsString() : "") 
-                            + " - " + (saved.has("crmv") ? saved.get("crmv").getAsString() : ""));
-                    return saved;
-                }
+            HttpResponse<String> response = chamarRpc("rpc_admin_cadastrar_veterinario", params);
+            if (response.statusCode() == 200 || response.statusCode() == 201) {
+                JsonObject saved = JsonParser.parseString(response.body()).getAsJsonObject();
+                System.out.println("[SupabaseClient] Veterinário persistido no Supabase via RPC: "
+                        + (saved.has("nome") ? saved.get("nome").getAsString() : "")
+                        + " - " + (saved.has("crmv") ? saved.get("crmv").getAsString() : ""));
+                return saved;
             } else {
-                System.err.println("[SupabaseClient] Erro ao cadastrar veterinário no Supabase (HTTP " + response.statusCode() + "): " + response.body());
+                System.err.println("[SupabaseClient] Erro ao cadastrar veterinário via RPC (HTTP " + response.statusCode() + "): " + response.body());
                 throw new RuntimeException("Falha ao cadastrar veterinário no Supabase: " + response.body());
             }
         } catch (Exception e) {
             System.err.println("[SupabaseClient] Exceção ao cadastrar veterinário: " + e.getMessage());
             throw new RuntimeException("Erro ao cadastrar veterinário: " + e.getMessage(), e);
         }
-
-        return novoVet;
     }
 
     /**
-     * Lista todos os médicos-veterinários cadastrados no Supabase ordenados por nome.
+     * Lista todos os médicos-veterinários cadastrados no Supabase via RPC segura (sem senha_hash).
      */
     public JsonArray listarVeterinarios() {
         try {
-            String url = SupabaseConfig.obterEndpointTabela("veterinarios") + "?select=*&order=nome.asc";
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(6))
-                    .header("apikey", apiKey)
-                    .header("Authorization", "Bearer " + apiKey)
-                    .header("Accept", "application/json")
-                    .GET()
-                    .build();
+            JsonObject params = new JsonObject();
+            params.addProperty("p_admin_chave", SupabaseConfig.ADMIN_RPC_KEY);
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = chamarRpc("rpc_admin_listar_veterinarios", params);
             if (response.statusCode() == 200) {
-                return JsonParser.parseString(response.body()).getAsJsonArray();
+                JsonElement parsed = JsonParser.parseString(response.body());
+                if (parsed.isJsonArray()) {
+                    return parsed.getAsJsonArray();
+                }
+            } else {
+                System.err.println("[SupabaseClient] HTTP " + response.statusCode() + " ao listar veterinários via RPC: " + response.body());
             }
         } catch (Exception e) {
-            System.err.println("[SupabaseClient] Aviso ao listar veterinários no Supabase: " + e.getMessage());
+            System.err.println("[SupabaseClient] Aviso ao listar veterinários via RPC: " + e.getMessage());
         }
 
         return new JsonArray();
     }
 
     /**
-     * Atualiza o status de atividade (ativo: true/false) de um médico-veterinário no Supabase (tabela veterinarios).
+     * Atualiza o status de atividade (ativo: true/false) de um médico-veterinário via RPC segura.
      */
     public boolean atualizarStatusVeterinario(String id, boolean ativo) {
         if (id == null || id.trim().isEmpty()) {
@@ -527,28 +582,17 @@ public class SupabaseRestClient {
         }
         String cleanId = id.trim();
         try {
-            String url = SupabaseConfig.obterEndpointTabela("veterinarios")
-                    + "?id=eq." + URLEncoder.encode(cleanId, StandardCharsets.UTF_8);
+            JsonObject params = new JsonObject();
+            params.addProperty("p_admin_chave", SupabaseConfig.ADMIN_RPC_KEY);
+            params.addProperty("p_id", cleanId);
+            params.addProperty("p_ativo", ativo);
 
-            JsonObject body = new JsonObject();
-            body.addProperty("ativo", ativo);
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(6))
-                    .header("apikey", apiKey)
-                    .header("Authorization", "Bearer " + apiKey)
-                    .header("Content-Type", "application/json; charset=UTF-8")
-                    .header("Prefer", "return=representation")
-                    .method("PATCH", HttpRequest.BodyPublishers.ofString(body.toString(), StandardCharsets.UTF_8))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200 || response.statusCode() == 204) {
-                System.out.println("[SupabaseClient] Status do veterinário [" + cleanId + "] atualizado para ativo=" + ativo);
+            HttpResponse<String> response = chamarRpc("rpc_admin_atualizar_status_vet", params);
+            if (response.statusCode() == 200 && Boolean.parseBoolean(response.body().trim())) {
+                System.out.println("[SupabaseClient] Status do veterinário [" + cleanId + "] atualizado via RPC para ativo=" + ativo);
                 return true;
             } else {
-                System.err.println("[SupabaseClient] Erro ao atualizar status do veterinário (HTTP " + response.statusCode() + "): " + response.body());
+                System.err.println("[SupabaseClient] Erro ao atualizar status do veterinário via RPC (HTTP " + response.statusCode() + "): " + response.body());
                 return false;
             }
         } catch (Exception e) {
@@ -558,7 +602,7 @@ public class SupabaseRestClient {
     }
 
     /**
-     * Remove permanentemente o registro de um médico-veterinário da tabela 'veterinarios' do Supabase.
+     * Remove permanentemente o registro de um médico-veterinário via RPC segura.
      */
     public boolean excluirVeterinario(String id) {
         if (id == null || id.trim().isEmpty()) {
@@ -566,24 +610,16 @@ public class SupabaseRestClient {
         }
         String cleanId = id.trim();
         try {
-            String url = SupabaseConfig.obterEndpointTabela("veterinarios")
-                    + "?id=eq." + URLEncoder.encode(cleanId, StandardCharsets.UTF_8);
+            JsonObject params = new JsonObject();
+            params.addProperty("p_admin_chave", SupabaseConfig.ADMIN_RPC_KEY);
+            params.addProperty("p_id", cleanId);
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(6))
-                    .header("apikey", apiKey)
-                    .header("Authorization", "Bearer " + apiKey)
-                    .header("Accept", "application/json")
-                    .DELETE()
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200 || response.statusCode() == 204) {
-                System.out.println("[SupabaseClient] Veterinário [" + cleanId + "] excluído com sucesso do Supabase.");
+            HttpResponse<String> response = chamarRpc("rpc_admin_excluir_vet", params);
+            if (response.statusCode() == 200 && Boolean.parseBoolean(response.body().trim())) {
+                System.out.println("[SupabaseClient] Veterinário [" + cleanId + "] excluído com sucesso via RPC.");
                 return true;
             } else {
-                System.err.println("[SupabaseClient] Erro ao excluir veterinário (HTTP " + response.statusCode() + "): " + response.body());
+                System.err.println("[SupabaseClient] Erro ao excluir veterinário via RPC (HTTP " + response.statusCode() + "): " + response.body());
                 return false;
             }
         } catch (Exception e) {
@@ -593,51 +629,65 @@ public class SupabaseRestClient {
     }
 
     /**
-     * Salva um código OTP no Supabase (tabela autorizacoes_otp) com expiração de 2 horas.
+     * Salva um código OTP no Supabase via RPC segura com timestamp exato em UTC.
      */
     public JsonObject salvarOtpNoBanco(String petId, String codigoOtp, LocalDateTime expiraEm) {
-        String expiraIso = expiraEm.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "Z";
-        JsonObject body = new JsonObject();
-        body.addProperty("pet_id", petId);
-        body.addProperty("codigo_otp", codigoOtp);
-        body.addProperty("expira_em", expiraIso);
-        body.addProperty("usado", false);
+        String expiraUtcIso = java.time.ZonedDateTime.of(expiraEm, java.time.ZoneId.systemDefault())
+                .withZoneSameInstant(java.time.ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_INSTANT);
 
         try {
-            String url = SupabaseConfig.obterEndpointTabela("autorizacoes_otp");
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(6))
-                    .header("apikey", apiKey)
-                    .header("Authorization", "Bearer " + apiKey)
-                    .header("Content-Type", "application/json")
-                    .header("Prefer", "return=representation")
-                    .POST(HttpRequest.BodyPublishers.ofString(body.toString(), StandardCharsets.UTF_8))
-                    .build();
+            JsonObject params = new JsonObject();
+            params.addProperty("p_pet_id", petId);
+            params.addProperty("p_codigo_otp", codigoOtp);
+            params.addProperty("p_expira_em", expiraUtcIso);
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 201 || response.statusCode() == 200) {
-                JsonArray arr = JsonParser.parseString(response.body()).getAsJsonArray();
-                if (!arr.isEmpty()) {
-                    JsonObject criado = arr.get(0).getAsJsonObject();
-                    cacheOtps.put(petId, criado);
-                    return criado;
-                }
+            HttpResponse<String> response = chamarRpc("rpc_gerar_otp", params);
+            if (response.statusCode() == 200 || response.statusCode() == 201) {
+                JsonObject criado = JsonParser.parseString(response.body()).getAsJsonObject();
+                cacheOtps.put(petId, criado);
+                return criado;
+            } else {
+                System.err.println("[SupabaseClient] HTTP " + response.statusCode() + " ao gerar OTP via RPC: " + response.body());
             }
         } catch (Exception e) {
-            System.err.println("[SupabaseClient] Aviso ao inserir OTP no Supabase: " + e.getMessage());
+            System.err.println("[SupabaseClient] Aviso ao gerar OTP via RPC: " + e.getMessage());
         }
 
-        // Cache em memória para redundância
+        // Cache em memória para redundância offline
         JsonObject local = new JsonObject();
         local.addProperty("id", java.util.UUID.randomUUID().toString());
         local.addProperty("pet_id", petId);
         local.addProperty("codigo_otp", codigoOtp);
-        local.addProperty("expira_em", expiraIso);
+        local.addProperty("expira_em", expiraUtcIso);
         local.addProperty("usado", false);
         local.addProperty("created_at", LocalDateTime.now().toString());
         cacheOtps.put(petId, local);
         return local;
+    }
+
+    /**
+     * Valida e consome atomicamente um código OTP no Supabase via função RPC segura.
+     */
+    public JsonObject validarOtpRpc(String petId, String codigoOtp) {
+        if (petId == null || codigoOtp == null) {
+            return null;
+        }
+        try {
+            JsonObject params = new JsonObject();
+            params.addProperty("p_pet_id", petId.trim());
+            params.addProperty("p_codigo_otp", codigoOtp.trim());
+
+            HttpResponse<String> response = chamarRpc("rpc_validar_otp", params);
+            if (response.statusCode() == 200) {
+                return JsonParser.parseString(response.body()).getAsJsonObject();
+            } else {
+                System.err.println("[SupabaseClient] HTTP " + response.statusCode() + " ao validar OTP via RPC: " + response.body());
+            }
+        } catch (Exception e) {
+            System.err.println("[SupabaseClient] Aviso ao validar OTP via RPC: " + e.getMessage());
+        }
+        return null;
     }
 
     /**

@@ -512,15 +512,20 @@ async function handleLoginSubmit(event, role) {
     }
 
     try {
-      const respTutor = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/tutores?email=eq.${encodeURIComponent(email)}`, {
-        headers: {
-          'apikey': SUPABASE_CONFIG.anonKey,
-          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
-        }
+      const senhaHash = await gerarHashSenhaLocal(senhaDigitada);
+      const respTutor = await chamarSupabaseRpc('rpc_autenticar_tutor', {
+        p_email: email,
+        p_senha_hash: senhaHash
       });
-      const tutores = await respTutor.json();
+      const authData = await respTutor.json().catch(() => ({}));
 
-      let tutor = tutores && tutores.length > 0 ? tutores[0] : null;
+      if (authData && authData.encontrado && !authData.autenticado) {
+        showToast('Senha Incorreta', 'A senha informada não confere com o cadastro deste tutor.', 'fa-circle-xmark', 'danger');
+        passInput?.focus();
+        return;
+      }
+
+      let tutor = (authData && authData.autenticado && authData.tutor) ? authData.tutor : null;
       let pet = null;
       let tagCode = null;
 
@@ -645,64 +650,33 @@ async function handleLoginSubmit(event, role) {
       showToast('Aviso: Backend Java', 'Servidor Java offline. Executando contingência via Supabase...', 'fa-server', 'warning');
     }
 
-    // 2. Fallback de contingência consultando diretamente o Supabase REST com verificação de SHA-256
+    // 2. Fallback de contingência via função RPC segura (não expõe tabela veterinarios ou senha_hash)
     try {
-      const respSupabase = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/veterinarios?select=*`, {
-        headers: {
-          'apikey': SUPABASE_CONFIG.anonKey,
-          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
-        }
+      const senhaHash = await gerarHashSenhaLocal(senha);
+      const respRpc = await chamarSupabaseRpc('rpc_autenticar_veterinario', {
+        p_identificador: crmv,
+        p_senha_hash: senhaHash
       });
-      const vets = await respSupabase.json();
-      const cleanNum = crmv.replace(/\D/g, '');
-      const isEmail = crmv.includes('@');
+      const authData = await respRpc.json().catch(() => ({}));
 
-      let vetEncontrado = null;
-      if (Array.isArray(vets)) {
-        for (const v of vets) {
-          if (isEmail && v.email && v.email.toLowerCase() === crmv.toLowerCase()) {
-            vetEncontrado = v;
-            break;
-          } else if (!isEmail && v.crmv) {
-            const vNum = v.crmv.replace(/\D/g, '');
-            if (vNum === cleanNum || (cleanNum && vNum.includes(cleanNum))) {
-              vetEncontrado = v;
-              break;
-            }
-          }
-        }
-      }
-
-      if (!vetEncontrado) {
+      if (!authData || !authData.encontrado) {
         showToast('CRMV Não Localizado', `Nenhum cadastro de veterinário encontrado para ${crmv}.`, 'fa-triangle-exclamation', 'warning');
         crmvInput?.focus();
         return;
       }
 
-      if (vetEncontrado.ativo === false) {
+      if (authData.ativo === false) {
         showToast('Credencial Inativa', 'A credencial deste médico-veterinário está inativa. Contate o administrador.', 'fa-ban', 'danger');
         return;
       }
 
-      // Valida hash SHA-256 no cliente com salt de domínio
-      const enc = new TextEncoder();
-      const dataBytes = enc.encode("PetStory#2026$" + senha.trim());
-      const hashBuf = await crypto.subtle.digest('SHA-256', dataBytes);
-      const hashHex = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
-
-      const hashBanco = (vetEncontrado.senha_hash || '').toLowerCase();
-      let senhaValida = hashBanco === hashHex.toLowerCase();
-
-      if (!senhaValida && hashBanco === senha.trim()) {
-        senhaValida = true;
-      }
-
-      if (!senhaValida) {
+      if (!authData.autenticado || !authData.veterinario) {
         showToast('Senha Incorreta', 'Senha do médico-veterinário incorreta.', 'fa-circle-xmark', 'danger');
         passInput?.focus();
         return;
       }
 
+      const vetEncontrado = authData.veterinario;
       salvarSessaoVet(vetEncontrado);
       showToast('CRMV Validado!', `${vetEncontrado.nome} (${vetEncontrado.crmv || crmv}) autenticado com sucesso.`, 'fa-stethoscope', 'success');
       setTimeout(() => { switchScreen('vet-scan'); }, 600);
@@ -836,20 +810,20 @@ async function carregarVeterinariosAdmin() {
     console.warn('[Admin] Backend Java offline para listagem de veterinários. Consultando Supabase:', errNet);
   }
 
-  // 2. Fallback direto para o Supabase REST
+  // 2. Fallback direto via função RPC segura
   if (!vets || vets.length === 0) {
     try {
-      const resp = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/veterinarios?select=*&order=nome.asc`, {
-        headers: {
-          'apikey': SUPABASE_CONFIG.anonKey,
-          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
-        }
+      const resp = await chamarSupabaseRpc('rpc_admin_listar_veterinarios', {
+        p_admin_chave: SUPABASE_CONFIG.adminRpcKey
       });
       if (resp.ok) {
-        vets = await resp.json();
+        const resJson = await resp.json();
+        if (Array.isArray(resJson)) {
+          vets = resJson;
+        }
       }
     } catch (errSupabase) {
-      console.error('[Admin] Erro ao carregar veterinários do Supabase:', errSupabase);
+      console.error('[Admin] Erro ao carregar veterinários via RPC:', errSupabase);
     }
   }
 
@@ -984,38 +958,26 @@ async function salvarNovoVeterinarioAdmin(e) {
     console.warn('[Admin] Backend Java offline, tentando gravação direta no Supabase:', errNet);
   }
 
-  // 2. Fallback direto para o Supabase REST com cálculo de SHA-256 no browser
+  // 2. Fallback direto via função RPC segura com cálculo de SHA-256
   if (!gravadoComSucesso) {
     try {
-      const enc = new TextEncoder();
-      const dataBytes = enc.encode("PetStory#2026$" + senha);
-      const hashBuf = await crypto.subtle.digest('SHA-256', dataBytes);
-      const senhaHash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+      const senhaHash = await gerarHashSenhaLocal(senha);
 
-      const respSupabase = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/veterinarios`, {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_CONFIG.anonKey,
-          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
-          'Content-Type': 'application/json; charset=utf-8',
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify({
-          nome: nome,
-          crmv: crmvFormatado,
-          clinica: clinica,
-          especialidade: especialidade,
-          email: email,
-          senha_hash: senhaHash,
-          ativo: true
-        })
+      const respSupabase = await chamarSupabaseRpc('rpc_admin_cadastrar_veterinario', {
+        p_admin_chave: SUPABASE_CONFIG.adminRpcKey,
+        p_nome: nome,
+        p_crmv: crmvFormatado,
+        p_clinica: clinica,
+        p_especialidade: especialidade,
+        p_email: email,
+        p_senha_hash: senhaHash
       });
 
       if (respSupabase.ok || respSupabase.status === 201) {
         gravadoComSucesso = true;
       }
     } catch (errSupabase) {
-      console.error('[Admin] Erro na contingência Supabase:', errSupabase);
+      console.error('[Admin] Erro na contingência RPC Supabase:', errSupabase);
     }
   }
 
@@ -1053,23 +1015,19 @@ async function alternarStatusVeterinarioAdmin(id, novoStatus) {
     console.warn(`[Admin] Backend Java offline ao ${acaoTexto} veterinário. Usando Supabase REST:`, errNet);
   }
 
-  // 2. Fallback de contingência direto no Supabase REST
+  // 2. Fallback de contingência via RPC segura
   if (!sucesso) {
     try {
-      const respSupa = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/veterinarios?id=eq.${id}`, {
-        method: 'PATCH',
-        headers: {
-          'apikey': SUPABASE_CONFIG.anonKey,
-          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ ativo: novoStatus })
+      const respSupa = await chamarSupabaseRpc('rpc_admin_atualizar_status_vet', {
+        p_admin_chave: SUPABASE_CONFIG.adminRpcKey,
+        p_id: id,
+        p_ativo: novoStatus
       });
       if (respSupa.ok) {
         sucesso = true;
       }
     } catch (errSupa) {
-      console.error(`[Admin] Erro ao ${acaoTexto} veterinário no Supabase:`, errSupa);
+      console.error(`[Admin] Erro ao ${acaoTexto} veterinário via RPC:`, errSupa);
     }
   }
 
@@ -1109,21 +1067,18 @@ async function excluirVeterinarioAdmin(id, nome) {
     console.warn('[Admin] Backend Java offline ao excluir veterinário. Usando Supabase REST:', errNet);
   }
 
-  // 2. Fallback de contingência direto no Supabase REST
+  // 2. Fallback de contingência via RPC segura
   if (!sucesso) {
     try {
-      const respSupa = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/veterinarios?id=eq.${id}`, {
-        method: 'DELETE',
-        headers: {
-          'apikey': SUPABASE_CONFIG.anonKey,
-          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
-        }
+      const respSupa = await chamarSupabaseRpc('rpc_admin_excluir_vet', {
+        p_admin_chave: SUPABASE_CONFIG.adminRpcKey,
+        p_id: id
       });
       if (respSupa.ok) {
         sucesso = true;
       }
     } catch (errSupa) {
-      console.error('[Admin] Erro ao excluir veterinário no Supabase:', errSupa);
+      console.error('[Admin] Erro ao excluir veterinário via RPC:', errSupa);
     }
   }
 

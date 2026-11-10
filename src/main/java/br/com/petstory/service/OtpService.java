@@ -110,55 +110,42 @@ public class OtpService {
 
         String petId = tagObj.get("pet_id").getAsString();
 
-        // 2. Busca histórico de autorizações OTP para este pet no banco de dados
-        List<JsonObject> autorizacoes = supabaseClient.buscarOtpsPorPetId(petId);
-
-        if (autorizacoes.isEmpty()) {
-            throw new SecurityException("Nenhum código de autorização clínica ativo foi gerado pelo tutor deste animal.");
-        }
-
-        // 3. Procura a autorização correspondente ao código digitado
-        JsonObject autorizacaoCorrespondente = null;
-        for (JsonObject aut : autorizacoes) {
-            if (aut.has("codigo_otp") && aut.get("codigo_otp").getAsString().equals(otpClean)) {
-                autorizacaoCorrespondente = aut;
-                break;
-            }
-        }
-
-        if (autorizacaoCorrespondente == null) {
-            throw new SecurityException("Código OTP [" + otpClean + "] incorreto! Não coincide com a autorização gerada pelo tutor.");
-        }
-
-        // 4. Verifica se já foi utilizado (regra estrita de One-Time Password)
-        boolean jaUsado = autorizacaoCorrespondente.has("usado") && autorizacaoCorrespondente.get("usado").getAsBoolean();
-        if (jaUsado) {
-            throw new SecurityException("Este código OTP (" + otpClean + ") já foi utilizado anteriormente em outro atendimento (uso único). Solicite ao tutor a geração de um novo código.");
-        }
-
-        // 5. Verifica se o código expirou (prazo de 2 horas)
-        if (autorizacaoCorrespondente.has("expira_em")) {
-            try {
-                String expiraStr = autorizacaoCorrespondente.get("expira_em").getAsString();
-                // Limpa sufixos de fuso horário se necessário para parsear
-                expiraStr = expiraStr.replace("Z", "").replace("+00:00", "");
-                if (expiraStr.contains(".")) {
-                    expiraStr = expiraStr.substring(0, expiraStr.indexOf("."));
-                }
-                LocalDateTime dataExpiracao = LocalDateTime.parse(expiraStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-                if (LocalDateTime.now().isAfter(dataExpiracao)) {
+        // 2. Validação segura e atômica via função RPC no Supabase (impede exposição da tabela autorizacoes_otp)
+        JsonObject rpcRes = supabaseClient.validarOtpRpc(petId, otpClean);
+        if (rpcRes != null && rpcRes.has("valido")) {
+            if (!rpcRes.get("valido").getAsBoolean()) {
+                String motivo = rpcRes.has("motivo") ? rpcRes.get("motivo").getAsString() : "nao_encontrado";
+                if ("ja_utilizado".equals(motivo)) {
+                    throw new SecurityException("Este código OTP (" + otpClean + ") já foi utilizado anteriormente em outro atendimento (uso único). Solicite ao tutor a geração de um novo código.");
+                } else if ("expirado".equals(motivo)) {
                     throw new SecurityException("O código de autorização expirou após o limite de validade de 2 horas. Solicite ao tutor a geração de um novo código.");
+                } else {
+                    throw new SecurityException("Código OTP [" + otpClean + "] incorreto! Não coincide com a autorização gerada pelo tutor.");
                 }
-            } catch (SecurityException se) {
-                throw se;
-            } catch (Exception e) {
-                // Em caso de falha de formato, tolera se foi criado recentemente
             }
+        } else {
+            // Fallback offline em memória caso o Supabase esteja inacessível
+            List<JsonObject> autorizacoes = supabaseClient.buscarOtpsPorPetId(petId);
+            if (autorizacoes.isEmpty()) {
+                throw new SecurityException("Nenhum código de autorização clínica ativo foi gerado pelo tutor deste animal.");
+            }
+            JsonObject autorizacaoCorrespondente = null;
+            for (JsonObject aut : autorizacoes) {
+                if (aut.has("codigo_otp") && aut.get("codigo_otp").getAsString().equals(otpClean)) {
+                    autorizacaoCorrespondente = aut;
+                    break;
+                }
+            }
+            if (autorizacaoCorrespondente == null) {
+                throw new SecurityException("Código OTP [" + otpClean + "] incorreto! Não coincide com a autorização gerada pelo tutor.");
+            }
+            boolean jaUsado = autorizacaoCorrespondente.has("usado") && autorizacaoCorrespondente.get("usado").getAsBoolean();
+            if (jaUsado) {
+                throw new SecurityException("Este código OTP (" + otpClean + ") já foi utilizado anteriormente em outro atendimento (uso único). Solicite ao tutor a geração de um novo código.");
+            }
+            String autId = autorizacaoCorrespondente.has("id") ? autorizacaoCorrespondente.get("id").getAsString() : null;
+            supabaseClient.marcarOtpComoUsado(autId, petId);
         }
-
-        // 6. Sucesso! Marca o código como USADO no banco para impedir reuso
-        String autId = autorizacaoCorrespondente.has("id") ? autorizacaoCorrespondente.get("id").getAsString() : null;
-        supabaseClient.marcarOtpComoUsado(autId, petId);
 
         // 7. Carrega dados do pet e tutor para devolver ao prontuário médico
         JsonObject pet = supabaseClient.buscarPetPorId(petId);

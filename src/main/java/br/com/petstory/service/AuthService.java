@@ -91,59 +91,39 @@ public class AuthService {
         }
 
         String emailNorm = email.trim().toLowerCase();
+        String senhaHash = gerarHashSenha(senha);
 
-        // 1. Busca dados do tutor no Supabase
-        JsonObject tutor = supabaseClient.buscarTutorPorEmail(emailNorm);
-        if (tutor == null) {
-            throw new SecurityException("Nenhum cadastro de tutor localizado para o e-mail: " + emailNorm);
-        }
+        JsonObject tutor = null;
 
-        // 2. Validação estrita da senha (prioridade para a coluna senha_hash do banco de dados)
-        boolean senhaValida = false;
-        if (tutor.has("senha_hash") && !tutor.get("senha_hash").isJsonNull() && !tutor.get("senha_hash").getAsString().trim().isEmpty()) {
-            String hashBanco = tutor.get("senha_hash").getAsString().trim();
-            senhaValida = verificarSenha(senha, hashBanco);
-            // Compatibilidade com senhas legadas em texto plano se houver
-            if (!senhaValida && hashBanco.equals(senha.trim())) {
-                senhaValida = true;
-                try {
-                    String novoHash = gerarHashSenha(senha);
-                    supabaseClient.atualizarSenhaHashTutor(tutor.get("id").getAsString(), novoHash);
-                } catch (Exception ignored) {}
+        // 1. Autentica via função RPC segura no Supabase (não expõe senha_hash nem tabela tutores)
+        JsonObject rpcRes = supabaseClient.autenticarTutorRpc(emailNorm, senhaHash);
+        if (rpcRes != null && rpcRes.has("encontrado")) {
+            if (!rpcRes.get("encontrado").getAsBoolean()) {
+                throw new SecurityException("Nenhum cadastro de tutor localizado para o e-mail: " + emailNorm);
             }
-        }
-
-        // Fallback resiliente para mapa de credenciais em memória
-        if (!senhaValida) {
-            String senhaEsperada = credenciaisTutores.get(emailNorm);
-            if (senhaEsperada == null && emailNorm.contains("@")) {
-                String prefix = emailNorm.split("@")[0];
-                senhaEsperada = credenciaisTutores.get(prefix + "@example.com");
-                if (senhaEsperada == null) {
-                    senhaEsperada = credenciaisTutores.get(prefix + "@gmail.com");
+            if (!rpcRes.get("autenticado").getAsBoolean()) {
+                throw new SecurityException("A senha informada não confere com o cadastro deste tutor.");
+            }
+            tutor = rpcRes.getAsJsonObject("tutor");
+        } else {
+            // Fallback offline caso Supabase esteja inacessível (resiliência em memória)
+            tutor = supabaseClient.buscarTutorPorEmail(emailNorm);
+            if (tutor == null) {
+                throw new SecurityException("Nenhum cadastro de tutor localizado para o e-mail: " + emailNorm);
+            }
+            boolean senhaValida = false;
+            if (tutor.has("senha_hash") && !tutor.get("senha_hash").isJsonNull()) {
+                senhaValida = verificarSenha(senha, tutor.get("senha_hash").getAsString().trim());
+            }
+            if (!senhaValida) {
+                String senhaEsperada = credenciaisTutores.get(emailNorm);
+                if (senhaEsperada != null && senhaEsperada.equals(senha.trim())) {
+                    senhaValida = true;
                 }
             }
-
-            if (senhaEsperada != null && senhaEsperada.equals(senha.trim())) {
-                senhaValida = true;
-                // Salva o hash criptográfico no Supabase para migração definitiva
-                try {
-                    String novoHash = gerarHashSenha(senha);
-                    supabaseClient.atualizarSenhaHashTutor(tutor.get("id").getAsString(), novoHash);
-                } catch (Exception ignored) {}
-            } else if (senhaEsperada == null) {
-                // Novo usuário no primeiro login: registra hash no banco
-                registrarCredencialTutor(emailNorm, senha.trim());
-                senhaValida = true;
-                try {
-                    String novoHash = gerarHashSenha(senha);
-                    supabaseClient.atualizarSenhaHashTutor(tutor.get("id").getAsString(), novoHash);
-                } catch (Exception ignored) {}
+            if (!senhaValida) {
+                throw new SecurityException("A senha informada não confere com o cadastro deste tutor.");
             }
-        }
-
-        if (!senhaValida) {
-            throw new SecurityException("A senha informada não confere com o cadastro deste tutor.");
         }
 
         // 3. Busca o pet do tutor e a tag inteligente
@@ -190,6 +170,27 @@ public class AuthService {
         }
 
         String emailNorm = email.trim().toLowerCase();
+        String novoHash = gerarHashSenha(novaSenha);
+
+        // Executa redefinição de senha via RPC segura (valida desafio e altera hash no banco sem expor tabela tutores)
+        JsonObject rpcRes = supabaseClient.redefinirSenhaTutorRpc(emailNorm, desafioIdentidade.trim(), novoHash);
+        if (rpcRes != null && rpcRes.has("sucesso")) {
+            if (rpcRes.get("sucesso").getAsBoolean()) {
+                registrarCredencialTutor(emailNorm, novaSenha.trim());
+                JsonObject response = new JsonObject();
+                response.addProperty("sucesso", true);
+                response.addProperty("mensagem", "Senha redefinida com sucesso no banco de dados.");
+                return response;
+            } else {
+                String erro = rpcRes.has("erro") ? rpcRes.get("erro").getAsString() : "Dados de confirmação de identidade incorretos.";
+                if (erro.toLowerCase().contains("não localizado")) {
+                    throw new IllegalArgumentException("Nenhum cadastro de tutor localizado para o e-mail: " + emailNorm);
+                }
+                throw new SecurityException(erro);
+            }
+        }
+
+        // Fallback em memória caso Supabase esteja inacessível
         JsonObject tutor = supabaseClient.buscarTutorPorEmail(emailNorm);
         if (tutor == null) {
             throw new IllegalArgumentException("Nenhum cadastro de tutor localizado para o e-mail: " + emailNorm);
@@ -208,48 +209,19 @@ public class AuthService {
         String foneDigits = tutorFone.replaceAll("\\D", "");
 
         boolean confere = false;
-
-        // 1. Confirmação por Telefone / WhatsApp de Emergência
         if (!desafioDigits.isEmpty() && desafioDigits.length() >= 8 && foneDigits.contains(desafioDigits)) {
             confere = true;
-        } else if (!desafioDigits.isEmpty() && !foneDigits.isEmpty() && desafioDigits.equals(foneDigits)) {
+        } else if (!confere && !petTag.isEmpty() && (desafio.equalsIgnoreCase(petTag) || (!desafioDigits.isEmpty() && petTag.endsWith(desafioDigits)))) {
             confere = true;
-        }
-
-        // 2. Confirmação por Tag PST do Pet
-        if (!confere && !petTag.isEmpty()) {
-            String tagNorm = petTag.trim().toUpperCase();
-            String desafioTagNorm = desafio.toUpperCase();
-            if (desafioTagNorm.equals(tagNorm) || (!desafioDigits.isEmpty() && tagNorm.endsWith(desafioDigits))) {
-                confere = true;
-            }
-        }
-
-        // 3. Confirmação por Nome do Pet
-        if (!confere && !petNome.isEmpty()) {
-            if (desafio.equalsIgnoreCase(petNome) || desafio.toLowerCase().contains(petNome.toLowerCase())) {
-                confere = true;
-            }
-        }
-
-        // 4. Fallback especial para contas de demonstração (Mariana & Thor, Rafael & Bolinha)
-        if (!confere) {
-            if (emailNorm.contains("mariana") && (desafio.equalsIgnoreCase("Thor") || desafio.equalsIgnoreCase("PST-9921") || desafioDigits.contains("987654321"))) {
-                confere = true;
-            } else if (emailNorm.contains("rafael") && (desafio.equalsIgnoreCase("Bolinha") || desafio.equalsIgnoreCase("PST-1428") || desafioDigits.contains("900001234"))) {
-                confere = true;
-            }
+        } else if (!confere && !petNome.isEmpty() && (desafio.equalsIgnoreCase(petNome) || desafio.toLowerCase().contains(petNome.toLowerCase()))) {
+            confere = true;
         }
 
         if (!confere) {
             throw new SecurityException("Dados de confirmação de identidade incorretos.");
         }
 
-        // Grava o novo hash da senha no Supabase
-        String novoHash = gerarHashSenha(novaSenha);
         supabaseClient.atualizarSenhaHashTutor(tutorId, novoHash);
-
-        // Atualiza repositório em memória
         registrarCredencialTutor(emailNorm, novaSenha.trim());
 
         JsonObject response = new JsonObject();
@@ -259,7 +231,7 @@ public class AuthService {
     }
 
     /**
-     * Autentica o médico-veterinário com CRMV ou E-mail e senha profissional contra o banco de dados Supabase.
+     * Autentica o médico-veterinário com CRMV ou E-mail e senha profissional via RPC segura.
      */
     public JsonObject autenticarVeterinario(String crmvOuEmail, String uf, String senha) {
         if (crmvOuEmail == null || crmvOuEmail.trim().isEmpty()) {
@@ -270,51 +242,33 @@ public class AuthService {
         }
 
         String query = crmvOuEmail.trim();
+        String senhaHash = gerarHashSenha(senha);
 
-        // 1. Busca profissional no banco de dados do Supabase por CRMV ou E-mail
-        JsonObject vet = supabaseClient.buscarVeterinarioPorCrmvOuEmail(query, uf);
-        if (vet == null) {
-            throw new SecurityException("Nenhum cadastro de médico-veterinário localizado para '" + query + "'.");
-        }
-
-        // 2. Validação se a credencial do profissional está ativa
-        boolean ativo = true;
-        if (vet.has("ativo") && !vet.get("ativo").isJsonNull()) {
-            ativo = vet.get("ativo").getAsBoolean();
-        }
-        if (!ativo) {
-            throw new SecurityException("A credencial deste médico-veterinário está inativa. Contate a administração.");
-        }
-
-        // 3. Validação criptográfica da senha contra a coluna senha_hash do banco
-        boolean senhaValida = false;
-        if (vet.has("senha_hash") && !vet.get("senha_hash").isJsonNull() && !vet.get("senha_hash").getAsString().trim().isEmpty()) {
-            String hashBanco = vet.get("senha_hash").getAsString().trim();
-            senhaValida = verificarSenha(senha, hashBanco);
-            // Compatibilidade com senhas legadas em texto plano se houver
-            if (!senhaValida && hashBanco.equals(senha.trim())) {
-                senhaValida = true;
+        // 1. Autenticação segura via RPC do PostgreSQL (nunca expõe tabela veterinarios ou senha_hash)
+        JsonObject rpcRes = supabaseClient.autenticarVeterinarioRpc(query, senhaHash);
+        if (rpcRes != null && rpcRes.has("encontrado")) {
+            if (!rpcRes.get("encontrado").getAsBoolean()) {
+                throw new SecurityException("Nenhum cadastro de médico-veterinário localizado para '" + query + "'.");
             }
+            if (rpcRes.has("ativo") && !rpcRes.get("ativo").getAsBoolean()) {
+                throw new SecurityException("A credencial deste médico-veterinário está inativa. Contate a administração.");
+            }
+            if (!rpcRes.get("autenticado").getAsBoolean()) {
+                throw new SecurityException("Senha incorreta para o médico-veterinário autenticado.");
+            }
+
+            JsonObject vetResposta = rpcRes.getAsJsonObject("veterinario");
+            String sessionToken = "pst_sess_vet_" + UUID.randomUUID();
+
+            JsonObject response = new JsonObject();
+            response.addProperty("sucesso", true);
+            response.addProperty("token", sessionToken);
+            response.addProperty("tipo", "veterinario");
+            response.add("veterinario", vetResposta);
+            response.addProperty("mensagem", "Profissional autenticado e auditado com CRMV ativo.");
+            return response;
         }
 
-        if (!senhaValida) {
-            throw new SecurityException("Senha incorreta para o médico-veterinário autenticado.");
-        }
-
-        // 4. Gera sessão segura para o profissional
-        String sessionToken = "pst_sess_vet_" + UUID.randomUUID();
-
-        // Remove o hash da resposta por segurança
-        JsonObject vetResposta = vet.deepCopy();
-        vetResposta.remove("senha_hash");
-
-        JsonObject response = new JsonObject();
-        response.addProperty("sucesso", true);
-        response.addProperty("token", sessionToken);
-        response.addProperty("tipo", "veterinario");
-        response.add("veterinario", vetResposta);
-        response.addProperty("mensagem", "Profissional autenticado e auditado com CRMV ativo.");
-
-        return response;
+        throw new SecurityException("Não foi possível autenticar o médico-veterinário no servidor.");
     }
 }

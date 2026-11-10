@@ -104,41 +104,55 @@ async function validarAcessoClinicoVeterinario(tagDigitada, otpDigitado) {
     console.warn('[PetStory] Backend Java offline em ' + BACKEND_URL + '. Utilizando validação de contingência local:', errNet);
   }
 
-  // 2. Fallback de contingência consultando autorizacoes_otp no Supabase
+  // 2. Fallback de contingência validando atomicamente via função RPC segura no Supabase
   try {
-    const respOtp = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/autorizacoes_otp?codigo_otp=eq.${otp}&usado=eq.false&order=created_at.desc&limit=1`, {
-      headers: {
-        'apikey': SUPABASE_CONFIG.anonKey,
-        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+    let targetPetId = typeof resolverPetIdSupabase === 'function' ? resolverPetIdSupabase(tag) : null;
+    if (!targetPetId) {
+      const respTag = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/tags?codigo=eq.${encodeURIComponent(tag)}&select=pet_id`, {
+        headers: {
+          'apikey': SUPABASE_CONFIG.anonKey,
+          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+        }
+      });
+      if (respTag.ok) {
+        const tagRows = await respTag.json();
+        if (tagRows && tagRows.length > 0) targetPetId = tagRows[0].pet_id;
       }
-    });
-    if (respOtp.ok) {
-      const rows = await respOtp.json();
-      if (rows && rows.length > 0) {
-        const authRow = rows[0];
-        const naoExpirou = !authRow.expira_em || new Date(authRow.expira_em) > new Date();
-        if (naoExpirou) {
-          fetch(`${SUPABASE_CONFIG.url}/rest/v1/autorizacoes_otp?id=eq.${authRow.id}`, {
-            method: 'PATCH',
-            headers: {
-              'apikey': SUPABASE_CONFIG.anonKey,
-              'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ usado: true })
-          }).catch(() => {});
+    }
 
+    if (targetPetId) {
+      const respRpc = await chamarSupabaseRpc('rpc_validar_otp', {
+        p_pet_id: targetPetId,
+        p_codigo_otp: otp
+      });
+      if (respRpc.ok) {
+        const resRpc = await respRpc.json();
+        if (resRpc && resRpc.valido) {
           const nomePet = typeof obterNomePacientePorTag === 'function' ? obterNomePacientePorTag(tag) : 'Paciente';
           return {
             valido: true,
             tag: tag,
             nome: nomePet
           };
+        } else if (resRpc && resRpc.motivo === 'ja_utilizado') {
+          return {
+            valido: false,
+            campo: 'otp',
+            titulo: 'Código Já Utilizado',
+            mensagem: `Este código OTP (${otp}) já foi utilizado anteriormente (uso único).`
+          };
+        } else if (resRpc && resRpc.motivo === 'expirado') {
+          return {
+            valido: false,
+            campo: 'otp',
+            titulo: 'Código Expirado',
+            mensagem: 'O código de autorização expirou após 2 horas. Solicite um novo ao tutor.'
+          };
         }
       }
     }
   } catch (errOtp) {
-    console.warn('[PetStory] Aviso ao consultar OTP no Supabase:', errOtp);
+    console.warn('[PetStory] Aviso ao validar OTP via RPC segura:', errOtp);
   }
 
   // 3. Fallback de contingência local em memória

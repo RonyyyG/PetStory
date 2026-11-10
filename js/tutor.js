@@ -109,21 +109,21 @@ async function finalizarCadastroPet() {
       'Prefer': 'return=representation'
     };
 
-    // 1. Grava tutor no Supabase
-    const resTutor = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/tutores`, {
-      method: 'POST',
-      headers: authHeaders,
-      body: JSON.stringify({
-        nome: tutorNome,
-        telefone_emergencia: tutorTel,
-        cidade: tutorCidade,
-        email: tutorEmail
-      })
+    // 1. Grava tutor no Supabase via RPC segura (já aplica hash SHA-256 com salt)
+    const senhaHash = await gerarHashSenhaLocal(tutorSenha || '123456');
+    const resTutor = await chamarSupabaseRpc('rpc_cadastrar_tutor', {
+      p_nome: tutorNome,
+      p_email: tutorEmail,
+      p_telefone: tutorTel,
+      p_cidade: tutorCidade,
+      p_senha_hash: senhaHash
     });
 
     if (resTutor.ok) {
       const dataTutor = await resTutor.json();
-      tutorIdGerado = dataTutor[0]?.id;
+      if (dataTutor && dataTutor.sucesso && dataTutor.tutor) {
+        tutorIdGerado = dataTutor.tutor.id;
+      }
     }
 
     // 2. Grava pet no Supabase
@@ -867,25 +867,16 @@ function handlePetPhotoUpload(event) {
 // ============================================================================
 async function salvarOtpNoSupabase(tag, codigoOtp, petId) {
   try {
-    const targetPetId = petId || (tag === 'PST-1428' ? '7e096a3b-0468-4347-9bee-a8286a10d416' : null);
+    const targetPetId = petId || (tag === 'PST-1428' ? '7e096a3b-0468-4347-9bee-a8286a10d416' : (tag === 'PST-9921' ? 'c810977d-2eea-420e-8957-3ab54afba430' : null));
     if (targetPetId) {
-      await fetch(`${SUPABASE_CONFIG.url}/rest/v1/autorizacoes_otp`, {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_CONFIG.anonKey,
-          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          pet_id: targetPetId,
-          codigo_otp: codigoOtp,
-          expira_em: new Date(Date.now() + 7200000).toISOString(),
-          usado: false
-        })
+      await chamarSupabaseRpc('rpc_gerar_otp', {
+        p_pet_id: targetPetId,
+        p_codigo_otp: codigoOtp,
+        p_expira_em: new Date(Date.now() + 7200000).toISOString()
       });
     }
   } catch (e) {
-    console.warn('Erro ao salvar autorização OTP no Supabase:', e);
+    console.warn('Erro ao salvar autorização OTP via RPC segura:', e);
   }
 }
 

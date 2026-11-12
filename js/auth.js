@@ -286,7 +286,7 @@ function initScreenNavigation() {
   });
 }
 
-function switchScreen(screenKey) {
+function switchScreen(screenKey, routeParams) {
   // Desliga preventivamente o leitor de câmera ao alternar de tela
   if (typeof pararLeitorCamera === 'function') {
     pararLeitorCamera();
@@ -314,7 +314,16 @@ function switchScreen(screenKey) {
 
   targetScreen.classList.add('active');
 
-  window.history.replaceState(null, '', `#${screenKey}`);
+  let finalHash = `#${screenKey}`;
+  if (screenKey === 'public-tag') {
+    if (routeParams?.tagCode) {
+      finalHash = `#public-tag?code=${encodeURIComponent(routeParams.tagCode)}`;
+    } else if (window.location.hash.includes('public-tag?')) {
+      finalHash = window.location.hash;
+    }
+  }
+  window.history.replaceState(null, '', finalHash);
+
   if (typeof updateSecretSwitcherActive === 'function') {
     updateSecretSwitcherActive(screenKey);
   }
@@ -346,13 +355,46 @@ function switchScreen(screenKey) {
     if (typeof carregarVeterinariosAdmin === 'function') {
       carregarVeterinariosAdmin();
     }
+  } else if (screenKey === 'public-tag') {
+    let tagCodeUrl = routeParams?.tagCode || null;
+    if (!tagCodeUrl && window.location.hash.includes('?')) {
+      const qs = window.location.hash.split('?')[1];
+      const sp = new URLSearchParams(qs);
+      tagCodeUrl = sp.get('code') || sp.get('tag');
+    }
+    if (typeof carregarTagPublica === 'function') {
+      carregarTagPublica(tagCodeUrl);
+    }
   }
 }
 
 function handleInitialRoute() {
-  const hash = window.location.hash.replace('#', '').trim();
-  if (hash && SCREENS[hash]) {
-    switchScreen(hash);
+  const rawHash = window.location.hash.replace('#', '').trim();
+  if (!rawHash) {
+    switchScreen('login');
+    return;
+  }
+
+  let screenKey = rawHash;
+  let tagCodeParam = null;
+
+  if (rawHash.includes('?')) {
+    const [base, qs] = rawHash.split('?');
+    screenKey = base.replace(/^\/+|\/+$/g, '');
+    const params = new URLSearchParams(qs);
+    tagCodeParam = params.get('code') || params.get('tag');
+  } else if (/^tag\/([^/?#]+)/i.test(rawHash)) {
+    const m = rawHash.match(/^tag\/([^/?#]+)/i);
+    screenKey = 'public-tag';
+    tagCodeParam = m ? decodeURIComponent(m[1]).trim() : null;
+  } else if (/^public-tag\/([^/?#]+)/i.test(rawHash)) {
+    const m = rawHash.match(/^public-tag\/([^/?#]+)/i);
+    screenKey = 'public-tag';
+    tagCodeParam = m ? decodeURIComponent(m[1]).trim() : null;
+  }
+
+  if (screenKey && SCREENS[screenKey]) {
+    switchScreen(screenKey, tagCodeParam ? { tagCode: tagCodeParam } : undefined);
   } else {
     // Inicia diretamente na tela de login por padrão
     switchScreen('login');
@@ -396,6 +438,12 @@ function updateHeaderContext(screenKey) {
         <span>Administrador</span>
       `;
       userPill.title = "Painel Administrativo";
+    } else if (screenKey === 'public-tag') {
+      userPill.innerHTML = `
+        <i class="fa-solid fa-tag" style="color: #d97706; margin-right: 6px;"></i>
+        <span>Consulta Pública</span>
+      `;
+      userPill.title = "Identificação Pública de Coleira";
     } else if (screenKey === 'login' || screenKey === 'cadastro') {
       userPill.innerHTML = `
         <i class="fa-solid fa-lock" style="color: var(--teal-primary); margin-right: 6px;"></i>
@@ -458,6 +506,12 @@ async function handleLoginSubmit(event, role) {
 
     if (!email) {
       showToast('E-mail Obrigatório', 'Informe o seu e-mail de acesso.', 'fa-envelope', 'warning');
+      emailInput?.focus();
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showToast('E-mail Inválido', 'Informe um endereço de e-mail válido (ex: nome@dominio.com).', 'fa-envelope', 'warning');
       emailInput?.focus();
       return;
     }
@@ -589,26 +643,43 @@ async function handleLoginSubmit(event, role) {
     }
 
   } else {
-    // Autenticação de Médico-Veterinário
+    // Autenticação Estrita Cruzada de Médico-Veterinário (E-mail + CRMV + UF + Senha)
+    const emailInput = document.getElementById('login-vet-email');
     const crmvInput = document.getElementById('login-vet-crmv');
     const ufInput = document.getElementById('login-vet-uf');
     const passInput = document.getElementById('login-vet-pass');
 
-    const crmv = crmvInput ? crmvInput.value.trim() : '';
-    const uf = ufInput ? ufInput.value.trim().toUpperCase() : 'SP';
+    const emailRaw = emailInput ? emailInput.value.trim().toLowerCase() : '';
+    const crmvRaw = crmvInput ? crmvInput.value.trim() : '';
+    const uf = ufInput ? ufInput.value.trim().substring(0, 2).toUpperCase() : 'SP';
     const senha = passInput ? passInput.value.trim() : '';
 
     // Detecção de login do Administrador também na aba de veterinário
-    if ((crmv.toLowerCase() === 'admin' || crmv.toLowerCase() === 'admin@petstory.app') && (senha === 'admin' || senha === 'admin123')) {
-      salvarSessaoAdmin({ usuario: crmv });
+    if ((crmvRaw.toLowerCase() === 'admin' || crmvRaw.toLowerCase() === 'admin@petstory.app'
+      || emailRaw === 'admin' || emailRaw === 'admin@petstory.app')
+      && (senha === 'admin' || senha === 'admin123')) {
+      salvarSessaoAdmin({ usuario: emailRaw === 'admin' || emailRaw === 'admin@petstory.app' ? emailRaw : crmvRaw });
       showToast('Acesso Administrativo', 'Bem-vindo(a), Administrador! Painel de gestão do corpo clínico liberado.', 'fa-user-shield', 'success');
       setTimeout(() => { switchScreen('admin'); }, 500);
       return;
     }
 
-    if (!crmv) {
-      showToast('CRMV Obrigatório', 'Informe o número do seu CRMV ou e-mail profissional.', 'fa-id-card', 'warning');
+    if (!emailRaw || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw)) {
+      showToast('E-mail Profissional Obrigatório', 'Informe um endereço de e-mail profissional válido.', 'fa-envelope', 'warning');
+      emailInput?.focus();
+      return;
+    }
+
+    const crmvDigits = crmvRaw.replace(/\D/g, '');
+    if (!crmvRaw || !crmvDigits) {
+      showToast('CRMV Obrigatório', 'Informe o número numérico do seu CRMV.', 'fa-id-card', 'warning');
       crmvInput?.focus();
+      return;
+    }
+
+    if (!uf) {
+      showToast('UF Obrigatória', 'Selecione o estado (UF) do seu Conselho Regional.', 'fa-location-dot', 'warning');
+      ufInput?.focus();
       return;
     }
 
@@ -618,14 +689,21 @@ async function handleLoginSubmit(event, role) {
       return;
     }
 
-    showToast('Validando CRMV...', `Verificando credenciais no Servidor Backend Java...`, 'fa-circle-notch fa-spin');
+    showToast('Validando Credenciais...', 'Conferindo E-mail, CRMV, UF e Senha no Servidor Backend Java...', 'fa-circle-notch fa-spin');
 
     // 1. Tenta autenticação direta no Servidor HTTP Java (porta 8080)
     try {
+      const payloadVet = {
+        email: emailRaw,
+        crmv: crmvRaw,
+        uf: uf,
+        senha: senha
+      };
+
       const respJava = await fetch(`${BACKEND_URL}/api/auth/login-vet`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ crmv: crmv, uf: uf, senha: senha })
+        body: JSON.stringify(payloadVet)
       });
 
       const dataJava = await respJava.json().catch(() => ({}));
@@ -633,15 +711,38 @@ async function handleLoginSubmit(event, role) {
       if (respJava.ok && dataJava.sucesso) {
         const vet = dataJava.veterinario;
         salvarSessaoVet(vet);
-        showToast('CRMV Validado no Java!', `${vet.nome} (${vet.crmv || crmv}) autenticado com sucesso.`, 'fa-stethoscope', 'success');
+        showToast('CRMV Validado no Java!', `${vet.nome} (${vet.crmv || crmvRaw}) autenticado com sucesso.`, 'fa-stethoscope', 'success');
         setTimeout(() => { switchScreen('vet-scan'); }, 600);
         return;
       } else if (respJava.status === 401) {
-        showToast('Senha Incorreta', dataJava.mensagem || 'Senha do médico-veterinário incorreta.', 'fa-circle-xmark', 'danger');
-        passInput?.focus();
+        const msg = dataJava.mensagem || 'Credenciais do médico-veterinário inválidas.';
+        const msgLower = msg.toLowerCase();
+        let tituloErro = 'Senha Incorreta';
+        let iconeErro = 'fa-circle-xmark';
+        if (msgLower.includes('inativa') || msgLower.includes('suspens') || msgLower.includes('desativad')) {
+          tituloErro = 'Credencial Inativa';
+          iconeErro = 'fa-ban';
+        } else if (msgLower.includes('e-mail') || msgLower.includes('email')) {
+          tituloErro = 'E-mail Incompatível';
+          iconeErro = 'fa-envelope';
+        } else if (msgLower.includes('uf') || msgLower.includes('estado')) {
+          tituloErro = 'UF Incompatível';
+          iconeErro = 'fa-location-dot';
+        } else if (msgLower.includes('crmv') && msgLower.includes('incompat')) {
+          tituloErro = 'CRMV Incompatível';
+          iconeErro = 'fa-id-card';
+        } else if (msgLower.includes('nenhum cadastro') || msgLower.includes('não localizado')) {
+          tituloErro = 'CRMV Não Localizado';
+          iconeErro = 'fa-triangle-exclamation';
+        }
+        showToast(tituloErro, msg, iconeErro, 'danger');
+        if (tituloErro === 'Senha Incorreta') passInput?.focus();
+        else if (tituloErro === 'E-mail Incompatível') emailInput?.focus();
+        else if (tituloErro === 'UF Incompatível') ufInput?.focus();
+        else if (tituloErro === 'CRMV Incompatível') crmvInput?.focus();
         return;
       } else if (respJava.status === 400 || respJava.status === 404) {
-        showToast('CRMV Não Localizado', dataJava.mensagem || 'CRMV não encontrado no cadastro do Conselho.', 'fa-triangle-exclamation', 'warning');
+        showToast('Dados Incompletos', dataJava.mensagem || 'Verifique E-mail, CRMV, UF e Senha informados.', 'fa-triangle-exclamation', 'warning');
         crmvInput?.focus();
         return;
       }
@@ -653,14 +754,26 @@ async function handleLoginSubmit(event, role) {
     // 2. Fallback de contingência via função RPC segura (não expõe tabela veterinarios ou senha_hash)
     try {
       const senhaHash = await gerarHashSenhaLocal(senha);
-      const respRpc = await chamarSupabaseRpc('rpc_autenticar_veterinario', {
-        p_identificador: crmv,
+      let respRpc = await chamarSupabaseRpc('rpc_autenticar_veterinario', {
+        p_identificador: crmvRaw,
         p_senha_hash: senhaHash
       });
-      const authData = await respRpc.json().catch(() => ({}));
+      let authData = await respRpc.json().catch(() => ({}));
+
+      // Caso não localizado pelo CRMV, tenta consultar pelo e-mail para apontar divergência de CRMV
+      if ((!authData || !authData.encontrado) && emailRaw) {
+        const respEmail = await chamarSupabaseRpc('rpc_autenticar_veterinario', {
+          p_identificador: emailRaw,
+          p_senha_hash: senhaHash
+        });
+        const emailData = await respEmail.json().catch(() => ({}));
+        if (emailData && emailData.encontrado) {
+          authData = emailData;
+        }
+      }
 
       if (!authData || !authData.encontrado) {
-        showToast('CRMV Não Localizado', `Nenhum cadastro de veterinário encontrado para ${crmv}.`, 'fa-triangle-exclamation', 'warning');
+        showToast('CRMV Não Localizado', `Nenhum cadastro de veterinário encontrado para CRMV ${crmvRaw} / ${emailRaw}.`, 'fa-triangle-exclamation', 'warning');
         crmvInput?.focus();
         return;
       }
@@ -677,12 +790,38 @@ async function handleLoginSubmit(event, role) {
       }
 
       const vetEncontrado = authData.veterinario;
+
+      // Validação cruzada estrita: E-mail + CRMV + UF
+      const emailBanco = (vetEncontrado.email || '').trim().toLowerCase();
+      if (!emailBanco || emailBanco !== emailRaw) {
+        showToast('E-mail Incompatível', `O e-mail informado (${emailRaw}) não confere com o cadastrado para este profissional.`, 'fa-envelope', 'danger');
+        emailInput?.focus();
+        return;
+      }
+
+      const crmvDigitsBanco = (vetEncontrado.crmv || '').replace(/\D/g, '');
+      if (!crmvDigits || crmvDigits !== crmvDigitsBanco) {
+        showToast('CRMV Incompatível', `O CRMV informado (${crmvRaw}) é incompatível com o registro cadastrado.`, 'fa-id-card', 'danger');
+        crmvInput?.focus();
+        return;
+      }
+
+      if (uf && vetEncontrado.crmv) {
+        const matchUf = vetEncontrado.crmv.match(/CRMV[-\s]*([A-Z]{2})/i);
+        const ufBanco = matchUf ? matchUf[1].toUpperCase() : null;
+        if (ufBanco && ufBanco !== uf) {
+          showToast('UF Incompatível', `A UF selecionada (CRMV-${uf}) não confere com a UF registrada.`, 'fa-location-dot', 'danger');
+          ufInput?.focus();
+          return;
+        }
+      }
+
       salvarSessaoVet(vetEncontrado);
-      showToast('CRMV Validado!', `${vetEncontrado.nome} (${vetEncontrado.crmv || crmv}) autenticado com sucesso.`, 'fa-stethoscope', 'success');
+      showToast('CRMV Validado!', `${vetEncontrado.nome} (${vetEncontrado.crmv || crmvRaw}) autenticado com sucesso.`, 'fa-stethoscope', 'success');
       setTimeout(() => { switchScreen('vet-scan'); }, 600);
     } catch (errFallback) {
       console.error('Erro na contingência do veterinário:', errFallback);
-      showToast('Erro de Conexão', 'Não foi possível validar o CRMV no momento. Tente novamente.', 'fa-triangle-exclamation', 'danger');
+      showToast('Erro de Conexão', 'Não foi possível validar as credenciais no momento. Tente novamente.', 'fa-triangle-exclamation', 'danger');
     }
   }
 }

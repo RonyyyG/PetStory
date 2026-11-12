@@ -1222,7 +1222,8 @@ button, input, select, textarea {
   color: var(--success-text);
 }
 
-.badge-status.badge-pending {
+.badge-status.badge-pending,
+.badge-status.badge-warning {
   background: var(--warning-tint);
   border: 1px solid var(--warning-border);
   color: var(--warning-text);

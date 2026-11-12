@@ -100,6 +100,7 @@ async function finalizarCadastroPet() {
 
   let tutorIdGerado = null;
   let petIdGerado = null;
+  let erroCadastroMsg = 'Não foi possível concluir o cadastro no servidor. Verifique seus dados e tente novamente.';
 
   try {
     const authHeaders = {
@@ -120,10 +121,20 @@ async function finalizarCadastroPet() {
     });
 
     if (resTutor.ok) {
-      const dataTutor = await resTutor.json();
+      const dataTutor = await resTutor.json().catch(() => null);
       if (dataTutor && dataTutor.sucesso && dataTutor.tutor) {
         tutorIdGerado = dataTutor.tutor.id;
+      } else if (dataTutor && dataTutor.erro) {
+        erroCadastroMsg = dataTutor.erro;
       }
+    } else {
+      const errJson = await resTutor.json().catch(() => null);
+      if (errJson?.message || errJson?.erro) erroCadastroMsg = errJson.message || errJson.erro;
+    }
+
+    if (!resTutor.ok || !tutorIdGerado) {
+      showToast('Falha no Cadastro do Tutor', erroCadastroMsg, 'fa-circle-xmark', 'danger');
+      return;
     }
 
     // 2. Grava pet no Supabase
@@ -137,15 +148,12 @@ async function finalizarCadastroPet() {
       peso: petPeso,
       sexo: petSexo.includes('Macho') ? 'Macho' : 'Fêmea',
       castrado: isCastrado,
-      data_nascimento: petNasc,
+      data_nascimento: (petNasc && petNasc.trim() !== '') ? petNasc.trim() : null,
       foto_url: null, // Sem fotos aleatórias da web; utiliza avatar gráfico vetorial
       alergias_graves: petAlergias || 'Nenhuma restrição relatada',
-      modo_perdido: false
+      modo_perdido: false,
+      tutor_id: tutorIdGerado
     };
-
-    if (tutorIdGerado) {
-      petPayload.tutor_id = tutorIdGerado;
-    }
 
     const resPet = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/pets`, {
       method: 'POST',
@@ -154,31 +162,44 @@ async function finalizarCadastroPet() {
     });
 
     if (resPet.ok) {
-      const dataPet = await resPet.json();
+      const dataPet = await resPet.json().catch(() => []);
       petIdGerado = dataPet[0]?.id;
+    } else {
+      const errPet = await resPet.json().catch(() => null);
+      if (errPet?.message || errPet?.details) erroCadastroMsg = errPet.message || errPet.details;
+    }
+
+    if (!(resTutor.ok && resPet.ok && petIdGerado)) {
+      showToast('Falha no Cadastro do Pet', erroCadastroMsg, 'fa-circle-xmark', 'danger');
+      return;
     }
 
     // 3. Grava tag no Supabase
     const tagPayload = {
       codigo: tagCode,
       nfc_uid: 'NFC-' + Math.floor(100000 + Math.random() * 900000),
-      ativa: true
+      ativa: true,
+      pet_id: petIdGerado
     };
-    if (petIdGerado) {
-      tagPayload.pet_id = petIdGerado;
-    }
 
-    await fetch(`${SUPABASE_CONFIG.url}/rest/v1/tags`, {
+    const resTag = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/tags`, {
       method: 'POST',
       headers: authHeaders,
       body: JSON.stringify(tagPayload)
     });
 
+    if (!resTag.ok) {
+      showToast('Falha ao Ativar Tag', 'Não foi possível vincular a medalha PST no banco de dados. Tente novamente.', 'fa-triangle-exclamation', 'danger');
+      return;
+    }
+
   } catch (netErr) {
     console.error('Erro de rede ao salvar no Supabase:', netErr);
+    showToast('Erro de Conexão', 'Falha de comunicação ao gravar o cadastro. Verifique sua conexão e tente novamente.', 'fa-circle-exclamation', 'danger');
+    return;
   }
 
-  // Prepara dados e salva na sessão
+  // Prepara dados e salva na sessão apenas após confirmação do banco
   const tutorData = {
     id: tutorIdGerado,
     nome: tutorNome,
@@ -203,10 +224,12 @@ async function finalizarCadastroPet() {
   if (typeof salvarSessao === 'function') {
     salvarSessao(tutorData, petData, tagCode);
   }
-  renderTutorPortal(tutorData, petData, tagCode, false);
+  renderTutorPortal(tutorData, petData, tagCode);
 
-  // Renderiza QR Code localmente (offline e sem bloqueadores)
-  renderQrCodeLocal('created-qr-container', `https://petstory.app/#tag/${tagCode}`);
+  // Renderiza QR Code localmente apontando para #public-tag?code=${tagCode}
+  const baseUrl = window.location.href.split('#')[0];
+  const publicUrl = `${baseUrl}#public-tag?code=${encodeURIComponent(tagCode)}`;
+  renderQrCodeLocal('created-qr-container', publicUrl);
 
   avancarWizard(3);
   showToast('Cadastro Concluído!', `${petNome} cadastrado com sucesso! Tag [${tagCode}] ativada.`, 'fa-circle-check', 'success');
@@ -316,13 +339,16 @@ async function renderTutorPortal(tutor, pet, tagCode) {
 
   if (vaxList) {
     if (listaVacinas.length > 0) {
-      vaxList.innerHTML = listaVacinas.map(v => `
+      vaxList.innerHTML = listaVacinas.map(v => {
+        const st = v.status || 'Em Dia';
+        const badgeClass = st === 'Atrasada' ? 'badge-danger' : (st === 'Próximo do Reforço' ? 'badge-warning' : 'badge-success');
+        return `
         <div class="vax-item">
           <div class="vax-icon-wrap"><i class="fa-solid fa-syringe"></i></div>
           <div class="vax-info-col">
             <div class="vax-title-row">
               <span class="vax-title">${v.nome}</span>
-              <span class="badge-status badge-success" style="font-size: 0.72rem;">${v.status || 'Aplicada'}</span>
+              <span class="badge-status ${badgeClass}" style="font-size: 0.72rem;">${st}</span>
             </div>
             <span class="vax-subtext">${v.lote}</span>
           </div>
@@ -331,7 +357,8 @@ async function renderTutorPortal(tutor, pet, tagCode) {
             <div class="vax-date-value" style="color: #047857; font-weight: 700;">${v.reforco}</div>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
     } else {
       vaxList.innerHTML = `
         <div class="vax-empty-state">
@@ -985,16 +1012,36 @@ function closeOtpModal() {
 }
 
 function initModalHandlers() {
-  const modalBackdrop = document.getElementById('modal-otp-backdrop');
   const modalCloseBtn = document.getElementById('modal-otp-close');
-  if (modalBackdrop && modalCloseBtn) {
+  if (modalCloseBtn) {
     modalCloseBtn.addEventListener('click', closeOtpModal);
-    modalBackdrop.addEventListener('click', (e) => {
-      if (e.target === modalBackdrop) {
-        closeOtpModal();
+  }
+
+  // Padroniza o fechamento ao clicar no backdrop escuro para todos os 8 modais do sistema
+  const todosModais = [
+    'modal-otp-backdrop',
+    'modal-vermifugo-backdrop',
+    'modal-vaccine-backdrop',
+    'modal-prescription-backdrop',
+    'modal-surgery-backdrop',
+    'modal-exam-backdrop',
+    'modal-rx-print-backdrop',
+    'modal-reset-pass-backdrop'
+  ];
+
+  todosModais.forEach(modalId => {
+    const backdrop = document.getElementById(modalId);
+    if (!backdrop) return;
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) {
+        if (modalId === 'modal-otp-backdrop') {
+          closeOtpModal();
+        } else {
+          backdrop.classList.remove('open');
+        }
       }
     });
-  }
+  });
 }
 
 function initTutorInteractions() {
@@ -1023,9 +1070,169 @@ function initTutorInteractions() {
   }
 }
 
+// ============================================================================
+// TAG PÚBLICA REAL & CARREGAMENTO DINÂMICO POR CÓDIGO (#public-tag?code=...)
+// ============================================================================
+async function carregarTagPublica(tagCode) {
+  const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
+  const cleanTag = (tagCode || session?.pet?.tag || 'PST-9921').trim().toUpperCase();
+
+  const photoEl = document.getElementById('public-tag-photo');
+  const titleEl = document.getElementById('public-tag-pet-name');
+  const subEl = document.getElementById('public-tag-pet-subtitle');
+  const warnEl = document.getElementById('public-tag-health-warning');
+  const whatsTextEl = document.getElementById('public-btn-whatsapp-text');
+  const callTextEl = document.getElementById('public-btn-call-text');
+
+  if (subEl) {
+    subEl.textContent = `Tag ${cleanTag} • Consultando ficha pública de identificação...`;
+  }
+
+  let pet = null;
+  let tutor = null;
+
+  // 1. Consulta direta no Supabase (tags + pets + rpc_obter_tutor_publico)
+  try {
+    const authHeaders = {
+      'apikey': SUPABASE_CONFIG.anonKey,
+      'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
+    };
+
+    const respTag = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/tags?codigo=eq.${encodeURIComponent(cleanTag)}&select=*`, {
+      headers: authHeaders
+    });
+
+    if (respTag.ok) {
+      const tags = await respTag.json();
+      if (tags && tags.length > 0 && tags[0].pet_id) {
+        const respPet = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/pets?id=eq.${tags[0].pet_id}&select=*`, {
+          headers: authHeaders
+        });
+        if (respPet.ok) {
+          const pets = await respPet.json();
+          if (pets && pets.length > 0) {
+            pet = pets[0];
+          }
+        }
+      }
+    }
+
+    if (pet && pet.tutor_id && typeof chamarSupabaseRpc === 'function') {
+      const respTutor = await chamarSupabaseRpc('rpc_obter_tutor_publico', {
+        p_tutor_id: pet.tutor_id
+      });
+      if (respTutor.ok) {
+        const tData = await respTutor.json().catch(() => null);
+        if (tData && tData.nome) {
+          tutor = tData;
+        }
+      }
+    }
+  } catch (errSupa) {
+    console.warn('[PetStory] Aviso ao consultar tag pública no Supabase:', errSupa);
+  }
+
+  // 2. Fallback via Backend Java caso Supabase REST falhe ou esteja offline
+  if (!pet || !tutor) {
+    try {
+      const respJava = await fetch(`${BACKEND_URL}/api/pets/${encodeURIComponent(cleanTag)}/prontuario`);
+      if (respJava.ok) {
+        const pront = await respJava.json();
+        if (pront && pront.pet) {
+          pet = pet || pront.pet;
+          tutor = tutor || pront.tutor;
+        }
+      }
+    } catch (errJava) {
+      console.warn('[PetStory] Backend Java offline para consulta pública da tag:', errJava);
+    }
+  }
+
+  // 3. Fallback local seguro se offline
+  if (!pet && session && session.pet && (session.pet.tag || '').toUpperCase() === cleanTag) {
+    pet = session.pet;
+    tutor = tutor || session.tutor;
+  }
+
+  if (!pet) {
+    if (cleanTag === 'PST-9921') {
+      pet = { nome: 'Thor', especie: 'Canina', raca: 'Golden Retriever', alergias_graves: 'Dipirona e Sulfas (Choque anafilático prévio)', foto_url: null };
+      tutor = tutor || { nome: 'Mariana Vasconcelos', telefone_emergencia: '(11) 98765-4321', cidade: 'São Paulo - SP' };
+    } else if (cleanTag === 'PST-1428') {
+      pet = { nome: 'Bolinha', especie: 'Canina', raca: 'SRD', alergias_graves: 'Ração Pedegree, Dipirona', foto_url: null };
+      tutor = tutor || { nome: 'Rafael Martins Oliveira', telefone_emergencia: '(00) 90000-1234', cidade: 'Caruaru - PE' };
+    }
+  }
+
+  const petNome = pet?.nome || 'este Pet';
+  const petRaca = pet?.raca || 'SRD';
+  const petEspecie = pet?.especie || 'Animal';
+  const alergias = pet?.alergias_graves || '';
+  const tutorNome = tutor?.nome || 'Tutor(a) Responsável';
+  const tutorTel = tutor?.telefone_emergencia || '(11) 98765-4321';
+  const tutorCidade = tutor?.cidade || '';
+
+  window.dadosTagPublicaAtual = {
+    tagCode: cleanTag,
+    petNome,
+    petRaca,
+    tutorNome,
+    telefone: tutorTel
+  };
+
+  if (photoEl) {
+    photoEl.src = pet?.foto_url || DEFAULT_PET_NEUTRAL_AVATAR;
+  }
+  if (titleEl) {
+    titleEl.textContent = pet?.nome ? `Você encontrou ${petNome}? 🐾❤️` : `Tag ${cleanTag} • Você encontrou este Pet? 🐾❤️`;
+  }
+  if (subEl) {
+    const detalhes = [`Tag ${cleanTag}`, petEspecie, petRaca];
+    if (tutorCidade) detalhes.push(tutorCidade);
+    subEl.textContent = detalhes.filter(Boolean).join(' • ');
+  }
+  if (warnEl) {
+    if (alergias && !alergias.toLowerCase().includes('nenhuma')) {
+      warnEl.innerHTML = `<strong>ALERTA CRÍTICO DE SAÚDE (${petNome}):</strong> Possui restrição/alergia severa a <strong>${alergias}</strong>. Por favor, <strong>não ofereça comida ou medicação</strong> e contate ${tutorNome} imediatamente.`;
+    } else {
+      warnEl.innerHTML = `Este animal (<strong>${petNome}</strong>) possui identificação ativa PetStory. Por favor, <strong>não ofereça comida sem autorização</strong> e entre em contato imediato com <strong>${tutorNome}</strong>.`;
+    }
+  }
+  if (whatsTextEl) {
+    whatsTextEl.textContent = `Chamar ${tutorNome} no WhatsApp`;
+  }
+  if (callTextEl) {
+    callTextEl.textContent = `Ligar para ${tutorNome} (${tutorTel})`;
+  }
+}
+
 // Ações da Tag Pública
 function openWhatsappSimulated() {
+  const dados = window.dadosTagPublicaAtual;
+  if (dados && dados.telefone) {
+    let digits = dados.telefone.replace(/\D/g, '');
+    if (digits.length === 10 || digits.length === 11) {
+      digits = '55' + digits;
+    }
+    const msg = `Olá ${dados.tutorNome}! Encontrei ${dados.petNome} com a medalha PetStory (${dados.tagCode}).`;
+    showToast('Abrindo WhatsApp', `Iniciando conversa com ${dados.tutorNome} (${dados.telefone})...`, 'fa-brands fa-whatsapp', 'success');
+    if (digits.length >= 10) {
+      window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+    }
+    return;
+  }
   showToast('Abrindo WhatsApp', 'Iniciando conversa direta com o tutor: "Olá, encontrei seu pet..."', 'fa-brands fa-whatsapp', 'success');
+}
+
+function ligarTutorPublico() {
+  const dados = window.dadosTagPublicaAtual;
+  const tutorNome = dados?.tutorNome || 'Tutor Responsável';
+  const telefone = dados?.telefone || '(11) 98765-4321';
+  const digits = telefone.replace(/\D/g, '');
+  showToast('Ligando...', `Discando para ${tutorNome} (${telefone})...`, 'fa-phone', 'info');
+  if (digits.length >= 8) {
+    window.location.href = `tel:${digits}`;
+  }
 }
 
 // Expõe no escopo global
@@ -1036,12 +1243,12 @@ window.carregarExamesTutor = carregarExamesTutor;
 window.copiarTagTutor = copiarTagTutor;
 window.imprimirTagSimulada = imprimirTagSimulada;
 window.handlePetPhotoUpload = handlePetPhotoUpload;
-window.salvarOtpAtivo = salvarOtpAtivo;
-window.obterOtpEsperadoParaTag = obterOtpEsperadoParaTag;
 window.obterNomePacientePorTag = obterNomePacientePorTag;
 window.validarTagCadastrada = validarTagCadastrada;
 window.openOtpModal = openOtpModal;
 window.closeOtpModal = closeOtpModal;
 window.initModalHandlers = initModalHandlers;
 window.initTutorInteractions = initTutorInteractions;
+window.carregarTagPublica = carregarTagPublica;
 window.openWhatsappSimulated = openWhatsappSimulated;
+window.ligarTutorPublico = ligarTutorPublico;

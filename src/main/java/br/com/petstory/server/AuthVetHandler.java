@@ -31,11 +31,12 @@ public class AuthVetHandler implements HttpHandler {
 
         try {
             JsonObject body = HttpHelper.lerCorpoJson(exchange);
-            String crmv = body.has("crmv") ? body.get("crmv").getAsString() : null;
-            String uf = body.has("uf") ? body.get("uf").getAsString() : null;
-            String senha = body.has("senha") ? body.get("senha").getAsString() : null;
+            String crmv = body.has("crmv") && !body.get("crmv").isJsonNull() ? body.get("crmv").getAsString().trim() : null;
+            String email = body.has("email") && !body.get("email").isJsonNull() ? body.get("email").getAsString().trim() : null;
+            String uf = body.has("uf") && !body.get("uf").isJsonNull() ? body.get("uf").getAsString().trim() : null;
+            String senha = body.has("senha") && !body.get("senha").isJsonNull() ? body.get("senha").getAsString() : null;
 
-            JsonObject resultado = authService.autenticarVeterinario(crmv, uf, senha);
+            JsonObject resultado = authService.autenticarVeterinario(email, crmv, uf, senha);
             HttpHelper.enviarJson(exchange, 200, resultado);
         } catch (IllegalArgumentException e) {
             HttpHelper.enviarErro(exchange, 400, "Dados incompletos", e.getMessage());

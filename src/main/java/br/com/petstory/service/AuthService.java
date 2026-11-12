@@ -6,6 +6,8 @@ import com.google.gson.JsonObject;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * ============================================================================
@@ -234,18 +236,41 @@ public class AuthService {
      * Autentica o médico-veterinário com CRMV ou E-mail e senha profissional via RPC segura.
      */
     public JsonObject autenticarVeterinario(String crmvOuEmail, String uf, String senha) {
-        if (crmvOuEmail == null || crmvOuEmail.trim().isEmpty()) {
-            throw new IllegalArgumentException("O CRMV ou e-mail profissional é obrigatório.");
+        if (crmvOuEmail != null && crmvOuEmail.contains("@")) {
+            return autenticarVeterinario(crmvOuEmail, null, uf, senha);
+        }
+        return autenticarVeterinario(null, crmvOuEmail, uf, senha);
+    }
+
+    /**
+     * Autentica o médico-veterinário com validação estrita cruzada (E-mail + CRMV + UF + Senha) via RPC segura.
+     */
+    public JsonObject autenticarVeterinario(String email, String crmv, String uf, String senha) {
+        String emailNorm = email != null ? email.trim().toLowerCase() : "";
+        String crmvNorm = crmv != null ? crmv.trim() : "";
+        String ufNormRaw = uf != null ? uf.trim().toUpperCase() : "";
+
+        if (emailNorm.isEmpty() && crmvNorm.isEmpty()) {
+            throw new IllegalArgumentException("O e-mail e o CRMV profissional são obrigatórios.");
         }
         if (senha == null || senha.trim().isEmpty()) {
             throw new IllegalArgumentException("A senha profissional é obrigatória.");
         }
 
-        String query = crmvOuEmail.trim();
+        String query = !crmvNorm.isEmpty() ? crmvNorm : emailNorm;
         String senhaHash = gerarHashSenha(senha);
 
         // 1. Autenticação segura via RPC do PostgreSQL (nunca expõe tabela veterinarios ou senha_hash)
         JsonObject rpcRes = supabaseClient.autenticarVeterinarioRpc(query, senhaHash);
+        // Se consultou por CRMV e não localizou, tenta consultar pelo e-mail para diferenciar divergência de CRMV
+        if ((rpcRes == null || (rpcRes.has("encontrado") && !rpcRes.get("encontrado").getAsBoolean()))
+                && !emailNorm.isEmpty() && !query.equals(emailNorm)) {
+            JsonObject rpcByEmail = supabaseClient.autenticarVeterinarioRpc(emailNorm, senhaHash);
+            if (rpcByEmail != null && rpcByEmail.has("encontrado") && rpcByEmail.get("encontrado").getAsBoolean()) {
+                rpcRes = rpcByEmail;
+            }
+        }
+
         if (rpcRes != null && rpcRes.has("encontrado")) {
             if (!rpcRes.get("encontrado").getAsBoolean()) {
                 throw new SecurityException("Nenhum cadastro de médico-veterinário localizado para '" + query + "'.");
@@ -258,6 +283,48 @@ public class AuthService {
             }
 
             JsonObject vetResposta = rpcRes.getAsJsonObject("veterinario");
+
+            // Validação cruzada estrita: E-mail informado vs e-mail cadastrado
+            if (!emailNorm.isEmpty() && vetResposta != null) {
+                String emailBanco = vetResposta.has("email") && !vetResposta.get("email").isJsonNull()
+                        ? vetResposta.get("email").getAsString().trim().toLowerCase()
+                        : "";
+                if (emailBanco.isEmpty() || !emailBanco.equals(emailNorm)) {
+                    throw new SecurityException("O e-mail informado (" + emailNorm + ") é incompatível com o cadastro deste profissional.");
+                }
+            }
+
+            // Validação cruzada estrita: dígitos do CRMV informado vs cadastrado
+            if (!crmvNorm.isEmpty() && vetResposta != null && vetResposta.has("crmv") && !vetResposta.get("crmv").isJsonNull()) {
+                String crmvDigitsInf = crmvNorm.replaceAll("\\D", "");
+                String vetCrmvBanco = vetResposta.get("crmv").getAsString().trim();
+                String crmvDigitsBanco = vetCrmvBanco.replaceAll("\\D", "");
+
+                if (crmvDigitsInf.isEmpty() || !crmvDigitsInf.equals(crmvDigitsBanco)) {
+                    throw new SecurityException("O CRMV informado (" + crmvNorm + ") é incompatível com o registro cadastrado.");
+                }
+            }
+
+            // Validação cruzada estrita: UF informada vs UF registrada no CRMV do profissional
+            if (!ufNormRaw.isEmpty() && vetResposta != null && vetResposta.has("crmv") && !vetResposta.get("crmv").isJsonNull()) {
+                String ufNorm = ufNormRaw;
+                if (ufNorm.contains("-")) {
+                    ufNorm = ufNorm.split("-")[0].trim();
+                }
+                if (ufNorm.length() > 2) {
+                    ufNorm = ufNorm.substring(0, 2);
+                }
+
+                String vetCrmvBanco = vetResposta.get("crmv").getAsString().trim();
+                Matcher matcherUf = Pattern.compile("CRMV[-\\s]*([A-Z]{2})", Pattern.CASE_INSENSITIVE).matcher(vetCrmvBanco);
+                if (matcherUf.find()) {
+                    String ufBanco = matcherUf.group(1).toUpperCase();
+                    if (!ufBanco.equals(ufNorm)) {
+                        throw new SecurityException("A UF selecionada (CRMV-" + ufNorm + ") não confere com a UF registrada.");
+                    }
+                }
+            }
+
             String sessionToken = "pst_sess_vet_" + UUID.randomUUID();
 
             JsonObject response = new JsonObject();

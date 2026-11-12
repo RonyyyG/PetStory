@@ -187,7 +187,19 @@ async function imprimirReceitaOficial() {
     });
   }
 
-  // 2. Se o modal não tiver cards ou se não houver selecionados, busca do Supabase como contingência
+  // Fecha o modal de tela e abre a janela ANTES de chamadas await para evitar bloqueio de pop-up
+  if (typeof fecharModalEmitirReceita === 'function') {
+    fecharModalEmitirReceita();
+  }
+
+  const win = window.open('', '_blank', 'width=750,height=850');
+  if (!win) {
+    window.print();
+    return;
+  }
+  win.document.write('<p style="font-family:sans-serif;padding:24px;color:#475569;">Gerando receituário médico oficial...</p>');
+
+  // 2. Se o modal não tiver cards selecionados, busca no Supabase e no backend Java como contingência
   if (medicamentosParaImprimir.length === 0 && (!cards || cards.length === 0)) {
     try {
       const resp = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/prescricoes?pet_id=eq.${petId}&ativa=eq.true&order=created_at.desc`, {
@@ -210,18 +222,28 @@ async function imprimirReceitaOficial() {
     } catch (errRx) {
       console.warn('[PetStory] Erro ao carregar prescrições do Supabase para o receituário:', errRx);
     }
-  }
 
-  // Fecha o modal de tela
-  if (typeof fecharModalEmitirReceita === 'function') {
-    fecharModalEmitirReceita();
-  }
-
-  // Abre janela para impressão oficial
-  const win = window.open('', '_blank', 'width=750,height=850');
-  if (!win) {
-    window.print();
-    return;
+    if (medicamentosParaImprimir.length === 0) {
+      try {
+        const codigoProntuario = pacienteAtual?.tag || session?.pet?.tag || petId;
+        const respJava = await fetch(`${BACKEND_URL}/api/pets/${encodeURIComponent(codigoProntuario)}/prontuario`);
+        if (respJava.ok) {
+          const prontuario = await respJava.json();
+          if (prontuario && Array.isArray(prontuario.prescricoes) && prontuario.prescricoes.length > 0) {
+            medicamentosParaImprimir = prontuario.prescricoes
+              .filter(p => p.ativa !== false && (p.status || '').toLowerCase() !== 'suspensa')
+              .map(p => ({
+                nome: p.nome,
+                tipo: p.tipo || 'Uso Veterinário',
+                indicacao: p.indicacao || 'Avaliação clínica',
+                posologia: p.posologia || 'Conforme orientação veterinária'
+              }));
+          }
+        }
+      } catch (errJavaRx) {
+        console.warn('[PetStory] Erro ao carregar prescrições do Java para o receituário:', errJavaRx);
+      }
+    }
   }
 
   let htmlMedicamentos = '';
@@ -241,6 +263,7 @@ async function imprimirReceitaOficial() {
     `;
   }
 
+  win.document.open();
   win.document.write(`
     <!DOCTYPE html>
     <html lang="pt-BR">

@@ -167,6 +167,99 @@ public class PetStoryHttpServerTest {
     }
 
     @Test
+    @DisplayName("POST /api/auth/login-vet deve rejeitar UF incompatível ao logar por CRMV numérico")
+    public void testLoginVetUfIncompativel() throws Exception {
+        JsonObject body = new JsonObject();
+        body.addProperty("crmv", "38412");
+        body.addProperty("uf", "RJ");
+        body.addProperty("senha", "123456");
+
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/auth/login-vet"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body.toString(), StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+
+        assertEquals(401, resp.statusCode());
+        JsonObject json = JsonParser.parseString(resp.body()).getAsJsonObject();
+        assertFalse(json.get("sucesso").getAsBoolean());
+        assertTrue(json.get("mensagem").getAsString().contains("UF"));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/login-vet deve exigir validação cruzada estrita entre E-mail, CRMV, UF e Senha")
+    public void testLoginVetPorEmail() throws Exception {
+        // 1. E-mail correto + UF incompatível -> deve bloquear com HTTP 401
+        JsonObject bodyUfErrada = new JsonObject();
+        bodyUfErrada.addProperty("email", "ricardo.mendonca@vet.com");
+        bodyUfErrada.addProperty("crmv", "38412");
+        bodyUfErrada.addProperty("uf", "RJ");
+        bodyUfErrada.addProperty("senha", "123456");
+
+        HttpRequest reqUfErrada = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/auth/login-vet"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(bodyUfErrada.toString(), StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> respUfErrada = client.send(reqUfErrada, HttpResponse.BodyHandlers.ofString());
+        assertEquals(401, respUfErrada.statusCode());
+
+        // 2. E-mail correto + CRMV incompatível -> deve bloquear com HTTP 401
+        JsonObject bodyCrmvErrado = new JsonObject();
+        bodyCrmvErrado.addProperty("email", "ricardo.mendonca@vet.com");
+        bodyCrmvErrado.addProperty("crmv", "99999");
+        bodyCrmvErrado.addProperty("uf", "SP");
+        bodyCrmvErrado.addProperty("senha", "123456");
+
+        HttpRequest reqCrmvErrado = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/auth/login-vet"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(bodyCrmvErrado.toString(), StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> respCrmvErrado = client.send(reqCrmvErrado, HttpResponse.BodyHandlers.ofString());
+        assertEquals(401, respCrmvErrado.statusCode());
+
+        // 3. CRMV/UF corretos + E-mail incompatível -> deve bloquear com HTTP 401
+        JsonObject bodyEmailErrado = new JsonObject();
+        bodyEmailErrado.addProperty("email", "outro.medico@vet.com");
+        bodyEmailErrado.addProperty("crmv", "38412");
+        bodyEmailErrado.addProperty("uf", "SP");
+        bodyEmailErrado.addProperty("senha", "123456");
+
+        HttpRequest reqEmailErrado = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/auth/login-vet"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(bodyEmailErrado.toString(), StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> respEmailErrado = client.send(reqEmailErrado, HttpResponse.BodyHandlers.ofString());
+        assertEquals(401, respEmailErrado.statusCode());
+
+        // 4. Todos os 4 campos consistentes (E-mail + CRMV + UF + Senha) -> HTTP 200
+        JsonObject bodyOk = new JsonObject();
+        bodyOk.addProperty("email", "ricardo.mendonca@vet.com");
+        bodyOk.addProperty("crmv", "38412");
+        bodyOk.addProperty("uf", "SP");
+        bodyOk.addProperty("senha", "123456");
+
+        HttpRequest reqOk = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/auth/login-vet"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(bodyOk.toString(), StandardCharsets.UTF_8))
+                .build();
+
+        HttpResponse<String> respOk = client.send(reqOk, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, respOk.statusCode());
+        JsonObject json = JsonParser.parseString(respOk.body()).getAsJsonObject();
+        assertTrue(json.get("sucesso").getAsBoolean());
+        assertEquals("Dr. Ricardo Mendonça", json.getAsJsonObject("veterinario").get("nome").getAsString());
+    }
+
+    @Test
     @DisplayName("Ciclo completo de OTP: Geração segura, bloqueio de código errado, validação com sucesso e bloqueio de reuso")
     public void testCicloCompletoOtp() throws Exception {
         // 1. Tutor gera novo código OTP para Thor (PST-9921)

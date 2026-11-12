@@ -238,27 +238,34 @@ function initScannerSimulations() {
       showToast('Acesso Autorizado (Java)!', `Prontuário completo de ${resultado.nome} aberto com sucesso por 2 horas.`, 'fa-shield-dog', 'success');
 
       setTimeout(() => {
-        carregarProntuarioPaciente(resultado.tag);
         switchScreen('prontuario');
       }, 500);
     });
   }
 
   if (emergencyBtn) {
-    emergencyBtn.addEventListener('click', () => {
-      const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
-      const code = tagInput ? tagInput.value.trim().toUpperCase() : (session?.pet?.tag || 'PST-9921');
-      salvarAutorizacaoClinica({
-        tag: code,
-        nome: (typeof obterNomePacientePorTag === 'function' ? obterNomePacientePorTag(code) : null) || 'Paciente Emergência',
-        timestamp: Date.now(),
-        tipo: 'EMERGENCIA'
-      });
-      showToast('Acesso de Emergência', 'Acesso concedido imediatamente para atendimento de urgência vital.', 'fa-triangle-exclamation', 'danger');
-      carregarProntuarioPaciente(code);
-      setTimeout(() => { switchScreen('prontuario'); }, 600);
-    });
+    emergencyBtn.addEventListener('click', emergenciaVital);
   }
+}
+
+function emergenciaVital() {
+  const tagInput = document.getElementById('input-tag-code');
+  const code = tagInput ? tagInput.value.trim().toUpperCase() : '';
+
+  if (!code) {
+    showToast('Código da Tag Obrigatório', 'Informe o código da Tag PST (ex: PST-1428 ou PST-9921) para liberar o acesso de emergência vital.', 'fa-triangle-exclamation', 'warning');
+    tagInput?.focus();
+    return;
+  }
+
+  salvarAutorizacaoClinica({
+    tag: code,
+    nome: (typeof obterNomePacientePorTag === 'function' ? obterNomePacientePorTag(code) : null) || 'Paciente Emergência',
+    timestamp: Date.now(),
+    tipo: 'EMERGENCIA'
+  });
+  showToast('Acesso de Emergência', 'Acesso concedido imediatamente para atendimento de urgência vital.', 'fa-triangle-exclamation', 'danger');
+  setTimeout(() => { switchScreen('prontuario'); }, 600);
 }
 
 function atualizarCredencialVetScanner() {
@@ -549,6 +556,9 @@ function initMedicalRecordTabs() {
   });
 }
 
+let ultimoProntuarioTagCarregada = null;
+let ultimoProntuarioTimestamp = 0;
+
 function carregarProntuarioPaciente(tagCode) {
   const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
   const pNome = document.getElementById('prontuario-pet-nome');
@@ -566,7 +576,13 @@ function carregarProntuarioPaciente(tagCode) {
   const alertCronica = document.getElementById('prontuario-alert-cronica');
   const photoImg = document.getElementById('prontuario-pet-photo');
 
-  const codigoAlvo = tagCode || session?.pet?.tag || 'PST-1428';
+  const codigoAlvo = (tagCode || session?.pet?.tag || 'PST-1428').toString().trim();
+  const agora = Date.now();
+  if (ultimoProntuarioTagCarregada === codigoAlvo && (agora - ultimoProntuarioTimestamp) < 800) {
+    return;
+  }
+  ultimoProntuarioTagCarregada = codigoAlvo;
+  ultimoProntuarioTimestamp = agora;
 
   // 1. Tenta carregar do backend Java unificado
   fetch(`${BACKEND_URL}/api/pets/${codigoAlvo}/prontuario`)
@@ -792,7 +808,7 @@ async function carregarCirurgiasProntuario(petId) {
 
   tbody.innerHTML = `
     <tr>
-      <td colspan="6" style="text-align:center; padding:30px 15px; color:#64748b; background:#f8fafc;">
+      <td colspan="5" style="text-align:center; padding:30px 15px; color:#64748b; background:#f8fafc;">
         <i class="fa-solid fa-scissors" style="font-size:1.8rem; margin-bottom:8px; display:block; color:#94a3b8;"></i>
         <strong>Nenhum procedimento ou cirurgia cadastrado para este paciente.</strong><br>
         <span style="font-size: 0.85rem;">Clique no botão acima <strong>"Agendar Cirurgia ou Procedimento"</strong> para marcar intervenções com notificação na tela do tutor.</span>
@@ -812,9 +828,8 @@ async function carregarCirurgiasProntuario(petId) {
         <tr style="${bgStyle}">
           <td><strong>${c.nome}</strong></td>
           <td><strong style="color: #2563eb;">${formatarDataBr(c.data) || c.data}</strong></td>
-          <td>Sedação / Avaliação prévia</td>
-          <td><span>${c.notas || 'Jejum obrigatório'}</span></td>
           <td>${c.cirurgiao || 'Cirurgião Responsável'}</td>
+          <td><span>${c.notas || 'Jejum obrigatório'}</span></td>
           <td>${statusBadge}</td>
         </tr>
       `;
@@ -1587,10 +1602,9 @@ async function salvarModalCirurgia(event) {
     tr.style.background = '#eff6ff';
     tr.innerHTML = `
       <td><strong>${nome}</strong></td>
-      <td><strong style="color: #2563eb;">${dataBr} (Agendada)</strong></td>
-      <td>Sedação / Avaliação prévia</td>
-      <td><span>${notas}</span></td>
+      <td><strong style="color: #2563eb;">${dataBr}</strong></td>
       <td>${cirurgiao}</td>
+      <td><span>${notas}</span></td>
       <td><span class="badge-status badge-pending"><i class="fa-solid fa-clock"></i> Agendada</span></td>
     `;
     tbody.prepend(tr);
@@ -1945,6 +1959,9 @@ async function abrirModalEmitirReceita() {
       </div>
     `;
 
+    let prescricoes = [];
+
+    // 1. Consulta direta na tabela prescricoes do Supabase
     try {
       const resp = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/prescricoes?pet_id=eq.${targetId}&ativa=eq.true&order=created_at.desc`, {
         headers: {
@@ -1954,33 +1971,80 @@ async function abrirModalEmitirReceita() {
       });
 
       if (resp.ok) {
-        const prescricoes = await resp.json();
-        if (prescricoes && prescricoes.length > 0) {
-          medsList.innerHTML = prescricoes.map((p, idx) => `
-            <div class="rx-print-item-card" data-rx-id="${p.id || ''}" style="padding: 0.9rem 1rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 0.8rem; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
-              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.8rem; margin-bottom: 0.4rem;">
-                <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; flex: 1; margin: 0;">
-                  <input type="checkbox" class="rx-print-checkbox" checked style="accent-color: var(--teal-primary); width: 17px; height: 17px; cursor: pointer;">
-                  <span class="rx-item-nome" style="font-weight: 700; color: #0f172a; font-size: 0.95rem;">${idx + 1}. ${p.nome}</span>
-                </label>
-                <span class="badge-status badge-success rx-item-tipo" style="font-size: 0.72rem;">${p.tipo || 'Uso Veterinário'}</span>
-              </div>
-              <div style="font-size: 0.8rem; color: #475569; margin-bottom: 0.5rem; padding-left: 1.7rem;">
-                <strong>Indicação:</strong> <span class="rx-item-indicacao-text">${p.indicacao || 'Terapêutica clínica animal'}</span>
-              </div>
-              <div style="padding-left: 1.7rem;">
-                <label style="display: block; font-size: 0.76rem; font-weight: 600; color: #334155; margin-bottom: 0.25rem;">
-                  Posologia & Modo de Uso (Ajustável antes da impressão):
-                </label>
-                <textarea class="form-input rx-item-posologia" rows="2" style="font-size: 0.82rem; padding: 0.5rem; width: 100%; border-radius: 6px; resize: vertical; line-height: 1.4;">${p.posologia || 'Conforme orientação veterinária.'}</textarea>
-              </div>
-            </div>
-          `).join('');
-          return;
+        const rows = await resp.json();
+        if (rows && rows.length > 0) {
+          prescricoes = rows;
         }
       }
     } catch (errRx) {
-      console.warn('[PetStory] Erro ao carregar prescrições para receita:', errRx);
+      console.warn('[PetStory] Erro ao carregar prescrições do Supabase para receita:', errRx);
+    }
+
+    // 2. Fallback para os itens retornados por /api/pets/{id}/prontuario caso não haja linha direta
+    if (prescricoes.length === 0) {
+      try {
+        const codigoProntuario = pacienteAtualProntuario?.tag || targetId;
+        const respJava = await fetch(`${BACKEND_URL}/api/pets/${encodeURIComponent(codigoProntuario)}/prontuario`);
+        if (respJava.ok) {
+          const prontuario = await respJava.json();
+          if (prontuario && Array.isArray(prontuario.prescricoes) && prontuario.prescricoes.length > 0) {
+            prescricoes = prontuario.prescricoes.filter(p => p.ativa !== false && (p.status || '').toLowerCase() !== 'suspensa');
+          }
+        }
+      } catch (errJavaRx) {
+        console.warn('[PetStory] Fallback Java para prescrições indisponível:', errJavaRx);
+      }
+    }
+
+    // 3. Fallback local lendo os cards ativos da aba Prescrições
+    if (prescricoes.length === 0) {
+      const rxCards = document.querySelectorAll('#prontuario-prescricoes-grid .rx-card');
+      rxCards.forEach(c => {
+        if (c.style.opacity === '0.45') return;
+        const nomeEl = c.querySelector('h4')?.textContent?.trim();
+        const tipoEl = c.querySelector('.badge-status')?.textContent?.trim();
+        const items = c.querySelectorAll('p, div');
+        let indicacaoText = '';
+        let posologiaText = '';
+        items.forEach(el => {
+          const t = el.textContent || '';
+          if (t.includes('Indicação:')) indicacaoText = t.replace(/^.*Indicação:\s*/i, '').trim();
+          if (t.includes('Posologia:')) posologiaText = t.replace(/^.*Posologia:\s*/i, '').trim();
+        });
+        if (nomeEl) {
+          prescricoes.push({
+            id: c.getAttribute('data-rx-id') || '',
+            nome: nomeEl,
+            tipo: tipoEl || 'Uso Veterinário',
+            indicacao: indicacaoText || 'Terapêutica clínica animal',
+            posologia: posologiaText || 'Conforme orientação veterinária.'
+          });
+        }
+      });
+    }
+
+    if (prescricoes && prescricoes.length > 0) {
+      medsList.innerHTML = prescricoes.map((p, idx) => `
+        <div class="rx-print-item-card" data-rx-id="${p.id || ''}" style="padding: 0.9rem 1rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 0.8rem; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.8rem; margin-bottom: 0.4rem;">
+            <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; flex: 1; margin: 0;">
+              <input type="checkbox" class="rx-print-checkbox" checked style="accent-color: var(--teal-primary); width: 17px; height: 17px; cursor: pointer;">
+              <span class="rx-item-nome" style="font-weight: 700; color: #0f172a; font-size: 0.95rem;">${idx + 1}. ${p.nome}</span>
+            </label>
+            <span class="badge-status badge-success rx-item-tipo" style="font-size: 0.72rem;">${p.tipo || 'Uso Veterinário'}</span>
+          </div>
+          <div style="font-size: 0.8rem; color: #475569; margin-bottom: 0.5rem; padding-left: 1.7rem;">
+            <strong>Indicação:</strong> <span class="rx-item-indicacao-text">${p.indicacao || 'Terapêutica clínica animal'}</span>
+          </div>
+          <div style="padding-left: 1.7rem;">
+            <label style="display: block; font-size: 0.76rem; font-weight: 600; color: #334155; margin-bottom: 0.25rem;">
+              Posologia & Modo de Uso (Ajustável antes da impressão):
+            </label>
+            <textarea class="form-input rx-item-posologia" rows="2" style="font-size: 0.82rem; padding: 0.5rem; width: 100%; border-radius: 6px; resize: vertical; line-height: 1.4;">${p.posologia || 'Conforme orientação veterinária.'}</textarea>
+          </div>
+        </div>
+      `).join('');
+      return;
     }
 
     medsList.innerHTML = `
@@ -2005,6 +2069,7 @@ function fecharModalEmitirReceita() {
 window.resolverPetIdSupabase = resolverPetIdSupabase;
 window.validarAcessoClinicoVeterinario = validarAcessoClinicoVeterinario;
 window.initScannerSimulations = initScannerSimulations;
+window.emergenciaVital = emergenciaVital;
 window.atualizarCredencialVetScanner = atualizarCredencialVetScanner;
 window.toggleLeitorCamera = toggleLeitorCamera;
 window.iniciarLeitorCamera = iniciarLeitorCamera;

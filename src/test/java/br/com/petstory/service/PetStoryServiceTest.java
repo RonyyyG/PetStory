@@ -12,30 +12,6 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * ============================================================================
- * TESTES UNITÁRIOS COM JUNIT 5: PetStoryServiceTest
- * ============================================================================
- * 
- * O QUE É ESTA CLASSE?
- * É a suíte de testes unitários automatizados do sistema PetStory.
- * 
- * POR QUE ELA EXISTE?
- * Para comprovar, de forma científica e automatizada, que todas as regras
- * de negócio do backend funcionam perfeitamente sem falhas.
- * 
- * COMO FUNCIONAM OS TESTES DO PROFESSOR (JUNIT 5):
- * Assim como nos exercícios de sala de aula com calculadora (onde testamos somar
- * ou dividir), aqui nós testamos:
- *  - assertEquals: verifica se o resultado obtido é EXATAMENTE igual ao esperado.
- *  - assertTrue: verifica se uma condição é VERDADEIRA (ex: autorizar acesso).
- *  - assertFalse: verifica se uma condição é FALSA (ex: bloquear invasão/código errado).
- *  - assertNotNull: verifica se o objeto gerado não veio vazio ou nulo.
- * 
- * COMO EXECUTAR NO TERMINAL:
- * Basta abrir o terminal na pasta do projeto e rodar:
- *   mvn test
- */
 public class PetStoryServiceTest {
 
     private PetStoryService service;

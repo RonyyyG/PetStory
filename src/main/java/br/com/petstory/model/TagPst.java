@@ -2,17 +2,7 @@ package br.com.petstory.model;
 
 import java.time.LocalDateTime;
 
-/**
- * ============================================================================
- * CLASSE MODELO: TagPst (Medalha Inteligente QR/NFC)
- * ============================================================================
- * Espelha a tabela "tags" do Supabase:
- * - codigo (ex: "PST-9921", "PST-1428")
- * - pet_id (UUID)
- * - nfc_uid
- * - ativa (boolean)
- * - created_at
- */
+// Modelo da medalha inteligente QR/NFC vinculada ao pet (tabela 'tags')
 public class TagPst {
 
     private String codigo;

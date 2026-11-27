@@ -901,7 +901,7 @@ button, input, select, textarea {
   }
 }
 
-/* Emergency Clinical Alert Banner (CRITICAL MEDICAL ALERT - SLIDES 4 & 5) */
+/* Banner de alerta clínico crítico */
 .clinical-alert-banner {
   background: var(--danger-tint);
   border: 1.5px solid var(--danger-border);

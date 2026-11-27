@@ -2,19 +2,7 @@ package br.com.petstory.model;
 
 import java.time.LocalDateTime;
 
-/**
- * ============================================================================
- * CLASSE MODELO: Cirurgia (Procedimentos Cirúrgicos e Agendamentos Clínicos)
- * ============================================================================
- * Representa um procedimento cirúrgico agendado ou realizado:
- * - id: Identificador único (UUID)
- * - petId: Vínculo com o animal
- * - nome: Nome da cirurgia (ex: "Castração Eletiva", "Profilaxia Dentária")
- * - data: Data e hora programada (ex: "15/11/2026")
- * - cirurgiao: Nome e CRMV do cirurgião
- * - notas: Orientações de jejum e pós-operatório
- * - status: "Agendada", "Realizada", "Cancelada"
- */
+// Modelo de cirurgia ou procedimento agendado para o pet
 public class Cirurgia {
 
     private String id;

@@ -8,16 +8,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-/**
- * ============================================================================
- * SERVIÇO DE OTP E AUTORIZAÇÃO CLÍNICA: OtpService
- * ============================================================================
- * Gerencia o ciclo de vida dos tokens de autorização médica de 6 dígitos:
- * 1. Geração com SecureRandom (criptograficamente imprevisível)
- * 2. Persistência relacional no Supabase (tabela autorizacoes_otp)
- * 3. Validação estrita de expiração (2 horas) e uso único (One-Time Password)
- * 4. Isolamento por paciente e eliminação de bypass estático
- */
+// Gera códigos OTP de 6 dígitos com SecureRandom e valida uso único / prazo de 2h no Supabase
 public class OtpService {
 
     private final SupabaseRestClient supabaseClient;

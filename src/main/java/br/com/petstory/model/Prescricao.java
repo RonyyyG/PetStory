@@ -2,20 +2,7 @@ package br.com.petstory.model;
 
 import java.time.LocalDateTime;
 
-/**
- * ============================================================================
- * CLASSE MODELO: Prescricao (Medicamentos e Tratamentos Clínicos do Pet)
- * ============================================================================
- * Representa uma prescrição médica emitida por médico-veterinário:
- * - id: Identificador único (UUID)
- * - petId: Vínculo com o animal
- * - nome: Nome do medicamento e dosagem (ex: "Apoquel 16mg")
- * - tipo: Via de administração ou regime (ex: "Uso Contínuo", "Oral", "Tópico")
- * - indicacao: Motivo clínico do uso
- * - posologia: Modo de usar e frequência
- * - veterinario: Identificação e CRMV do prescritor
- * - status: "Ativo" ou "Suspenso"
- */
+// Modelo de medicamento prescrito no prontuário do pet
 public class Prescricao {
 
     private String id;

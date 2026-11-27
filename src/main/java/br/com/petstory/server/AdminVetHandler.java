@@ -9,14 +9,7 @@ import com.sun.net.httpserver.HttpHandler;
 
 import java.io.IOException;
 
-/**
- * ============================================================================
- * ENDPOINT ADMINISTRATIVO: AdminVetHandler
- * ============================================================================
- * Gerencia o corpo clínico de médicos-veterinários:
- * - GET  /api/admin/veterinarios -> Lista todos os veterinários cadastrados
- * - POST /api/admin/veterinarios -> Cadastra novo profissional com senha criptografada (SHA-256)
- */
+// Endpoints do painel admin (/api/admin/veterinarios) para listar, cadastrar, ativar/desativar e excluir vets
 public class AdminVetHandler implements HttpHandler {
 
     private final SupabaseRestClient supabaseClient;

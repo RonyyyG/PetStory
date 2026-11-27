@@ -7,12 +7,7 @@ import com.sun.net.httpserver.HttpHandler;
 
 import java.io.IOException;
 
-/**
- * ============================================================================
- * HANDLER HTTP: ProntuarioHandler (GET /api/pets/{id}/prontuario)
- * ============================================================================
- * Retorna o prontuário completo e seguro do pet especificado por Tag PST, Microchip ou UUID.
- */
+// Endpoint GET /api/pets/{id}/prontuario (aceita Tag PST, Microchip ou UUID)
 public class ProntuarioHandler implements HttpHandler {
 
     private final ProntuarioService prontuarioService;

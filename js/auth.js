@@ -201,9 +201,7 @@ function verificarPermissaoRota(screenKey) {
   return { permitida: true };
 }
 
-// ============================================================================
-// GESTÃO DE SESSÃO DO TUTOR (SESSIONSTORAGE - PADRÃO DE SEGURANÇA BANCÁRIA)
-// ============================================================================
+// Sessão do tutor (salva no sessionStorage só enquanto a aba estiver aberta)
 function salvarSessao(tutor, pet, tagCode) {
   const sessionData = {
     tutor: tutor,

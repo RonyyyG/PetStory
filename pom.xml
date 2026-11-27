@@ -5,39 +5,29 @@
          http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- ====================================================================== -->
-    <!-- Identificação do Projeto Acadêmico A3                                  -->
-    <!-- ====================================================================== -->
+    <!-- Identificação do Projeto -->
     <groupId>br.com.petstory</groupId>
     <artifactId>petstory-backend</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>PetStory - Backend Java Puro com Maven</name>
-    <description>
-        Sistema de Prontuário Veterinário Unificado e Identificação Inteligente.
-        Projeto desenvolvido em Java 21 Puro (sem Spring Boot) para manter o código
-        simples, direto, didático e testável via JUnit 5.
-    </description>
+    <description>Backend do sistema PetStory em Java 21 com testes automatizados em JUnit 5.</description>
 
     <properties>
-        <!-- Configuração para Java 21 LTS e UTF-8 para evitar problemas de acentuação -->
+        <!-- Java 21 e UTF-8 para evitar problemas de acentuação -->
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         
-        <!-- Versões das bibliotecas utilizadas -->
         <junit.jupiter.version>5.10.2</junit.jupiter.version>
         <gson.version>2.10.1</gson.version>
         <postgresql.version>42.7.3</postgresql.version>
     </properties>
 
     <dependencies>
-        <!-- ================================================================== -->
-        <!-- JUnit 5: Framework padrão para testes unitários automatizados      -->
-        <!-- (Exatamente o que o professor avalia nas aulas: assert, testes)    -->
-        <!-- ================================================================== -->
+        <!-- JUnit 5: usado apenas na execução dos testes unitários e de integração -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -45,19 +35,14 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- ================================================================== -->
-        <!-- Gson: Para serialização/desserialização JSON simples em Java puro  -->
-        <!-- ================================================================== -->
+        <!-- Gson: serialização e leitura de JSON -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>${gson.version}</version>
         </dependency>
 
-        <!-- ================================================================== -->
-        <!-- PostgreSQL JDBC Driver: Para comunicação direta com o banco        -->
-        <!-- relacional do Supabase (PostgreSQL) caso queira conexão direta     -->
-        <!-- ================================================================== -->
+        <!-- Driver JDBC do PostgreSQL -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
@@ -67,7 +52,7 @@
 
     <build>
         <plugins>
-            <!-- Plugin para compilação do código em Java 21 -->
+            <!-- Compilação em Java 21 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -79,14 +64,14 @@
                 </configuration>
             </plugin>
 
-            <!-- Plugin Surefire para executar os testes automatizados JUnit 5 no 'mvn test' -->
+            <!-- Surefire: descobre e executa os testes JUnit 5 ao rodar 'mvn test' -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
             </plugin>
 
-            <!-- Plugin Exec para inicialização rápida do Servidor HTTP com 'mvn exec:java' -->
+            <!-- Exec: sobe o servidor HTTP direto com 'mvn exec:java' -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>

@@ -11,24 +11,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 
-/**
- * ============================================================================
- * SERVIDOR HTTP PRINCIPAL: PetStoryHttpServer
- * ============================================================================
- * Servidor HTTP de alta performance e baixo consumo de recursos nativo do Java 21,
- * com suporte a CORS e execução multi-threaded com Virtual Threads.
- *
- * ENDPOINTS DISPONÍVEIS:
- * - GET  /api/health            -> Verificação de integridade e status do servidor
- * - POST /api/auth/login-tutor  -> Autenticação de tutores (validação estrita de senha)
- * - POST /api/auth/login-vet    -> Autenticação de veterinários (validação de CRMV e UF)
- * - POST /api/otp/gerar         -> Geração de código OTP seguro (6 dígitos, 2h de validade)
- * - POST /api/otp/validar       -> Validação e consumo de OTP no atendimento clínico
- * - GET  /api/pets/{id}/prontuario -> Prontuário unificado do animal (Tag PST ou UUID)
- * - POST /api/vacinas           -> Registro de vacinas com assinatura eletrônica CRMV
- * - POST /api/cirurgias         -> Agendamento de cirurgias com reflexo no portal do tutor
- * - POST /api/prescricoes       -> Emissão de prescrições e medicamentos ativos
- */
+// Sobe o servidor HTTP na porta 8080 (Java 21 + Virtual Threads) e registra todas as rotas /api/...
 public class PetStoryHttpServer {
 
     public static final int PORTA_PADRAO = 8080;

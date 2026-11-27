@@ -2,91 +2,25 @@ package br.com.petstory.model;
 
 import java.time.LocalDate;
 
-/**
- * ============================================================================
- * CLASSE MODELO: Pet (POJO - Plain Old Java Object)
- * ============================================================================
- * 
- * O QUE É ESSA CLASSE?
- * Esta classe é o modelo de dados ("Entidade") que representa um animal
- * cadastrado no sistema PetStory. Em Java, chamamos isso de POJO, que é uma
- * classe simples contendo atributos privados, construtores e métodos Getters/Setters.
- * 
- * POR QUE ELA EXISTE?
- * Para que o backend em Java possa manipular as informações de um animal na memória,
- * salvar no banco de dados (Supabase / PostgreSQL) ou devolver essas informações
- * formatadas para o frontend ou para a API.
- * 
- * CORRESPONDÊNCIA NO BANCO DE DADOS:
- * Esta classe reflete exatamente as colunas da tabela "pets" que criamos no Supabase:
- * - id -> Chave primária do pet (UUID)
- * - nome -> Nome do pet (ex: Thor)
- * - especie -> Canina, Felina, etc.
- * - raca -> Raça (ex: Golden Retriever)
- * - pesoKg -> Peso atual em kg (ex: 32.8)
- * - alergiasGraves -> Alertas médicos vitais (ex: Dipirona e Sulfas)
- * - codigoTag -> Código da medalha inteligente (ex: PST-9921)
- */
+// Modelo de dados do animal (espelha a tabela 'pets' do Supabase)
 public class Pet {
 
-    // ========================================================================
-    // ATRIBUTOS PRIVADOS (Princípio do Encapsulamento da Programação Orientada a Objetos)
-    // ========================================================================
-    
-    /** Identificador único do pet no banco de dados (UUID gerado pelo Supabase) */
     private String id;
-
-    /** Identificador do dono/tutor responsável pelo pet */
     private String tutorId;
-
-    /** Nome de registro do animal (ex: Thor, Luna) */
     private String nome;
-
-    /** Espécie do animal (ex: "Canina", "Felina") */
     private String especie;
-
-    /** Raça do animal (ex: "Golden Retriever", "Siamês") */
     private String raca;
-
-    /** Sexo e status reprodutivo (ex: "Macho - Castrado", "Fêmea") */
     private String sexo;
-
-    /** Data aproximada de nascimento do animal */
     private LocalDate dataNascimento;
-
-    /** Peso corporal atual do pet em quilogramas (ex: 32.8) */
     private Double pesoKg;
-
-    /**
-     * Alergias severas e restrições medicamentosas críticas.
-     * Esse campo é destacado em vermelho no prontuário para evitar erros médicos.
-     */
-    private String alergiasGraves;
-
-    /**
-     * Código único da Tag inteligente gravado na medalha/QR Code da coleira (ex: PST-9921).
-     * É o identificador que o veterinário ou quem encontrar o pet utiliza para buscar os dados.
-     */
-    private String codigoTag;
-
-    /** Status do cadastro (true = ativo, false = inativo) */
+    private String alergiasGraves; // Destacado em vermelho no prontuário
+    private String codigoTag;      // Código da medalha (ex: PST-9921)
     private boolean ativo;
 
-    // ========================================================================
-    // CONSTRUTORES (Permitem criar instâncias do Pet de diferentes formas)
-    // ========================================================================
-
-    /**
-     * Construtor padrão sem argumentos (necessário para bibliotecas como Gson
-     * converterem JSON em objeto Java automaticamente).
-     */
     public Pet() {
         this.ativo = true;
     }
 
-    /**
-     * Construtor completo para inicializar todos os dados do animal de uma vez só.
-     */
     public Pet(String id, String tutorId, String nome, String especie, String raca, 
                String sexo, LocalDate dataNascimento, Double pesoKg, 
                String alergiasGraves, String codigoTag) {
@@ -102,11 +36,6 @@ public class Pet {
         this.codigoTag = codigoTag;
         this.ativo = true;
     }
-
-    // ========================================================================
-    // MÉTODOS GETTERS E SETTERS
-    // (Permitem ler e modificar os atributos privados de forma controlada)
-    // ========================================================================
 
     public String getId() {
         return id;
@@ -196,9 +125,6 @@ public class Pet {
         this.ativo = ativo;
     }
 
-    /**
-     * Método auxiliar para imprimir os dados do pet de forma amigável no console.
-     */
     @Override
     public String toString() {
         return "Pet{" +

@@ -2,18 +2,7 @@ package br.com.petstory.model;
 
 import java.time.LocalDateTime;
 
-/**
- * ============================================================================
- * CLASSE MODELO: Tutor (Dono do Animal)
- * ============================================================================
- * Espelha a tabela "tutores" do Supabase:
- * - id (UUID)
- * - nome
- * - telefone_emergencia
- * - email
- * - cidade
- * - created_at
- */
+// Modelo de dados do tutor (tabela 'tutores' do Supabase)
 public class Tutor {
 
     private String id;

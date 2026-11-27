@@ -19,13 +19,7 @@ import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * ============================================================================
- * TESTES DE INTEGRAÇÃO HTTP: PetStoryHttpServerTest
- * ============================================================================
- * Valida a inicialização do servidor HTTP nativo, o suporte a CORS,
- * e os novos endpoints de autenticação e OTP.
- */
+// Testes de integração que sobem o servidor HTTP numa porta de teste e disparam requisições reais
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class PetStoryHttpServerTest {
 

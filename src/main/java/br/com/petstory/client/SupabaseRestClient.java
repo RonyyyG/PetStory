@@ -23,16 +23,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * ============================================================================
- * CLIENTE HTTP SUPABASE: SupabaseRestClient
- * ============================================================================
- * Camada de comunicação direta com o banco relacional PostgreSQL do Supabase
- * utilizando a API REST oficial e HttpClient nativo do Java 21 LTS.
- *
- * Possui mecanismo de cache e fallback em memória com dados semente para
- * resiliência acadêmica (garante funcionamento mesmo sem internet).
- */
+// Faz as chamadas REST/RPC pro Supabase usando o HttpClient nativo do Java (com cache em memória de apoio)
 public class SupabaseRestClient {
 
     private final HttpClient httpClient;
@@ -40,7 +31,7 @@ public class SupabaseRestClient {
     private final String baseUrl;
     private final String apiKey;
 
-    // Cache local em memória para persistência rápida e resiliência offline
+    // Cache em memória usado como apoio caso o banco não responda
     private final Map<String, JsonObject> cacheOtps = new ConcurrentHashMap<>();
     private final Map<String, JsonObject> cacheTutores = new ConcurrentHashMap<>();
     private final Map<String, List<JsonObject>> cacheVacinas = new ConcurrentHashMap<>();
@@ -133,16 +124,13 @@ public class SupabaseRestClient {
         return null;
     }
 
-    /**
-     * Busca um tutor no Supabase por e-mail (para resiliência/cache em testes unitários).
-     */
+    // Busca tutor por e-mail no banco (com fallback pro cache local)
     public JsonObject buscarTutorPorEmail(String email) {
         if (email == null || email.trim().isEmpty()) {
             return null;
         }
         String emailNorm = email.trim().toLowerCase();
 
-        // 1. Tenta consulta ao banco relacional Supabase
         try {
             String url = SupabaseConfig.obterEndpointTabela("tutores") 
                     + "?email=eq." + URLEncoder.encode(emailNorm, StandardCharsets.UTF_8)
@@ -173,12 +161,11 @@ public class SupabaseRestClient {
             System.err.println("[SupabaseClient] Aviso ao buscar tutor por e-mail no Supabase: " + e.getMessage());
         }
 
-        // 2. Consulta no cache em memória
         if (cacheTutores.containsKey(emailNorm)) {
             return cacheTutores.get(emailNorm);
         }
 
-        // 3. Fallback resiliente para tutores padrão de demonstração
+        // Dados de contingência para tutores padrão de demonstração
         if (emailNorm.contains("mariana")) {
             JsonObject m = new JsonObject();
             m.addProperty("id", "1d41b141-75a1-4ea8-b398-4c5ff5ece979");
@@ -814,7 +801,7 @@ public class SupabaseRestClient {
             System.err.println("[SupabaseClient] Aviso ao atualizar senha_hash no Supabase: " + e.getMessage());
         }
 
-        // Atualiza cache em memória para resiliência acadêmica
+        // Mantém no cache em memória caso esteja offline
         if (cacheTutores.containsKey(tutorId)) {
             cacheTutores.get(tutorId).addProperty("senha_hash", senhaHash);
             atualizado = true;
@@ -882,10 +869,7 @@ public class SupabaseRestClient {
         return lista;
     }
 
-    /**
-     * Persiste uma nova dose de vacina na tabela 'vacinas' do banco Supabase PostgreSQL.
-     * Atualiza o cache local com a resposta confirmada do banco.
-     */
+    // Grava a vacina na tabela 'vacinas' do Supabase e já atualiza o cache local com o ID gerado
     public JsonObject salvarVacinaNoBanco(String petId, Vacina vacina) {
         if (petId == null || vacina == null) {
             return null;
@@ -929,7 +913,7 @@ public class SupabaseRestClient {
             System.err.println("[SupabaseClient] Falha ao persistir vacina no Supabase: " + e.getMessage());
         }
 
-        // Fallback resiliente para operação offline / testes locais
+        // Fallback em memória caso o banco falhe ou esteja offline
         if (!payload.has("id")) {
             payload.addProperty("id", UUID.randomUUID().toString());
         }

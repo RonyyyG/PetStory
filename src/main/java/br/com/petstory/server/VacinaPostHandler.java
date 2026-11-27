@@ -10,13 +10,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * ============================================================================
- * HANDLER HTTP: VacinaPostHandler (POST /api/vacinas e GET /api/vacinas)
- * ============================================================================
- * Permite ao médico-veterinário cadastrar vacinas com assinatura eletrônica e lote,
- * com sincronização imediata na carteirinha do tutor.
- */
+// Endpoint /api/vacinas para registrar novas doses com CRMV e consultar o histórico do pet
 public class VacinaPostHandler implements HttpHandler {
 
     private final ProntuarioService prontuarioService;

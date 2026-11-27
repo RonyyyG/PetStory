@@ -9,13 +9,7 @@ import com.sun.net.httpserver.HttpHandler;
 import java.io.IOException;
 import java.util.List;
 
-/**
- * ============================================================================
- * HANDLER HTTP: CirurgiaPostHandler (POST /api/cirurgias e GET /api/cirurgias)
- * ============================================================================
- * Registra procedimentos cirúrgicos agendados diretamente no backend Java,
- * gerando lembretes automáticos e alertas na tela do tutor.
- */
+// Endpoint /api/cirurgias para agendar e listar procedimentos cirúrgicos do pet
 public class CirurgiaPostHandler implements HttpHandler {
 
     private final ProntuarioService prontuarioService;

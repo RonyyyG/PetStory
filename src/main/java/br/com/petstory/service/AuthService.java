@@ -9,13 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * ============================================================================
- * SERVIÇO DE AUTENTICAÇÃO: AuthService
- * ============================================================================
- * Responsável pela validação estrita de credenciais de Tutores e Veterinários,
- * geração de tokens de sessão e isolamento de segurança.
- */
+// Valida login de tutores e veterinários (SHA-256 + salt) e gera token de sessão
 public class AuthService {
 
     private final SupabaseRestClient supabaseClient;

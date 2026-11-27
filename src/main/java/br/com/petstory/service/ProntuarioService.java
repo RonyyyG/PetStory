@@ -17,16 +17,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-/**
- * ============================================================================
- * SERVIÇO CLÍNICO: ProntuarioService
- * ============================================================================
- * Gerencia o prontuário unificado do animal de forma thread-safe e centralizada:
- * - Histórico de vacinas aplicadas e cálculo dinâmico de status sanitário
- * - Agendamento e registro de cirurgias e procedimentos
- * - Prescrições de medicamentos ativos e descontinuações
- * - Consolidação em tempo real para sincronização imediata entre Médico-Veterinário e Tutor
- */
+// Junta os dados do pet, tutor, vacinas, cirurgias e prescrições num prontuário só
 public class ProntuarioService {
 
     private final SupabaseRestClient supabaseClient;

@@ -2,18 +2,7 @@ package br.com.petstory.model;
 
 import java.time.LocalDateTime;
 
-/**
- * ============================================================================
- * CLASSE MODELO: Veterinario (Profissional Clínico com CRMV)
- * ============================================================================
- * Espelha a tabela "veterinarios" do Supabase:
- * - id (UUID)
- * - nome
- * - crmv (ex: "CRMV-SP 12.345")
- * - clinica
- * - especialidade
- * - created_at
- */
+// Modelo de dados do médico-veterinário credenciado (tabela 'veterinarios')
 public class Veterinario {
 
     private String id;

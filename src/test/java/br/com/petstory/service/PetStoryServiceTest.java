@@ -12,22 +12,18 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+// Testes unitários das regras de negócio (rodam direto na memória com 'mvn test -Dtest=PetStoryServiceTest')
 public class PetStoryServiceTest {
 
     private PetStoryService service;
 
-    /**
-     * O método anotado com @BeforeEach é executado automaticamente antes
-     * de CADA teste, garantindo que cada teste comece com um serviço limpo.
-     */
+    // Roda antes de cada teste para garantir uma instância limpa do service
     @BeforeEach
     public void setup() {
         service = new PetStoryService();
     }
 
-    // ========================================================================
-    // TESTE 1: GERAÇÃO DE TAG NO PADRÃO PST-XXXX
-    // ========================================================================
+    // 1. Geração de tag no formato PST-XXXX
     @Test
     @DisplayName("Deve gerar uma tag no padrão correto PST-XXXX")
     public void testGerarCodigoTagFormatoCorreto() {
@@ -41,9 +37,7 @@ public class PetStoryServiceTest {
         assertTrue(service.validarFormatoIdentificador(tagGerada), "O formato da tag gerada deve ser aceito pelo validador");
     }
 
-    // ========================================================================
-    // TESTE 2: TRATAMENTO DE COLISÃO (NUNCA REPETIR UMA TAG EXISTENTE)
-    // ========================================================================
+    // 2. Garante que a tag gerada nunca repita uma já cadastrada
     @Test
     @DisplayName("Deve garantir que a tag gerada não colida com tags já cadastradas no banco")
     public void testGerarCodigoTagSemColisao() {
@@ -62,9 +56,7 @@ public class PetStoryServiceTest {
             "A nova tag gerada (" + novaTag + ") não pode existir previamente no banco de dados!");
     }
 
-    // ========================================================================
-    // TESTE 3: VALIDAÇÃO DE FORMATOS DE TAG E MICROCHIP
-    // ========================================================================
+    // 3. Aceita formatos válidos (PST-XXXX e microchip 15 dígitos) e rejeita inválidos
     @Test
     @DisplayName("Deve aceitar formatos válidos e rejeitar formatos inválidos de tag")
     public void testValidarIdentificadorValidoEInvalido() {
@@ -80,9 +72,7 @@ public class PetStoryServiceTest {
         assertFalse(service.validarFormatoIdentificador(null), "Valor nulo deve ser rejeitado");
     }
 
-    // ========================================================================
-    // TESTE 4: GERAÇÃO DE TOKEN OTP DE 6 DÍGITOS
-    // ========================================================================
+    // 4. Geração de OTP de 6 dígitos válido por 2h
     @Test
     @DisplayName("Deve gerar token OTP de 6 dígitos numéricos com validade de 2 horas")
     public void testGerarOtpSeisDigitos() {
@@ -97,9 +87,7 @@ public class PetStoryServiceTest {
         assertFalse(registro.isExpirado(), "Um código recém-criado não pode estar expirado");
     }
 
-    // ========================================================================
-    // TESTE 5: SUCESSO NA VALIDAÇÃO DO TOKEN OTP (ACESSO LIBERADO)
-    // ========================================================================
+    // 5. Libera acesso quando o OTP digitado está certo e no prazo
     @Test
     @DisplayName("Deve autorizar acesso clínico quando o veterinário digita o OTP correto")
     public void testValidarOtpComSucesso() {
@@ -116,9 +104,7 @@ public class PetStoryServiceTest {
         assertTrue(registro.isJaUsado(), "Após a validação, o registro deve ser marcado como já utilizado (uso único)");
     }
 
-    // ========================================================================
-    // TESTE 6: BLOQUEIO QUANDO O VETERINÁRIO DIGITA OTP INCORRETO
-    // ========================================================================
+    // 6. Bloqueia acesso se o veterinário digitar um OTP errado
     @Test
     @DisplayName("Deve rejeitar acesso quando o veterinário digita código errado")
     public void testBloquearOtpIncorreto() {
@@ -132,9 +118,7 @@ public class PetStoryServiceTest {
         assertFalse(registro.isJaUsado(), "O token não deve ser consumido se a tentativa foi incorreta");
     }
 
-    // ========================================================================
-    // TESTE 7: BLOQUEIO QUANDO O OTP EXPIROU (+ DE 2 HORAS)
-    // ========================================================================
+    // 7. Bloqueia acesso se o OTP já passou do prazo de 2h
     @Test
     @DisplayName("Deve rejeitar acesso quando o código OTP ultrapassou o tempo limite de 2 horas")
     public void testBloquearOtpExpirado() {
@@ -150,9 +134,7 @@ public class PetStoryServiceTest {
         assertFalse(autorizado, "Código expirado há mais de 2 horas não deve ser aceito");
     }
 
-    // ========================================================================
-    // TESTE 8: BLOQUEIO DE REUSO DO MESMO OTP (USO ÚNICO)
-    // ========================================================================
+    // 8. Bloqueia reuso do mesmo código OTP depois da primeira validação
     @Test
     @DisplayName("Deve impedir que o mesmo código OTP seja reutilizado uma segunda vez")
     public void testBloquearOtpJaUsado() {
@@ -167,9 +149,7 @@ public class PetStoryServiceTest {
         assertFalse(segundaVez, "Segunda tentativa com o mesmo token deve ser bloqueada (regra de One-Time Password)");
     }
 
-    // ========================================================================
-    // TESTE 9: STATUS DA CARTEIRINHA DE VACINAÇÃO - "EM DIA"
-    // ========================================================================
+    // 9. Status da vacina: 'Em Dia' (acima de 30 dias pro reforço)
     @Test
     @DisplayName("Deve calcular status 'Em Dia' quando o reforço vence daqui a mais de 30 dias")
     public void testCalcularStatusVacinaEmDia() {
@@ -182,9 +162,7 @@ public class PetStoryServiceTest {
         assertEquals("Em Dia", status, "Vacina com reforço no próximo ano deve estar 'Em Dia'");
     }
 
-    // ========================================================================
-    // TESTE 10: STATUS DA CARTEIRINHA DE VACINAÇÃO - "PRÓXIMO DO REFORÇO"
-    // ========================================================================
+    // 10. Status da vacina: 'Próximo do Reforço' (30 dias ou menos)
     @Test
     @DisplayName("Deve calcular status 'Próximo do Reforço' quando faltam 30 dias ou menos")
     public void testCalcularStatusVacinaProximoReforco() {
@@ -197,9 +175,7 @@ public class PetStoryServiceTest {
         assertEquals("Próximo do Reforço", status, "Vacina que vence em menos de 30 dias deve alertar 'Próximo do Reforço'");
     }
 
-    // ========================================================================
-    // TESTE 11: STATUS DA CARTEIRINHA DE VACINAÇÃO - "ATRASADA"
-    // ========================================================================
+    // 11. Status da vacina: 'Atrasada' (data do reforço já venceu)
     @Test
     @DisplayName("Deve calcular status 'Atrasada' quando a data de reforço já venceu")
     public void testCalcularStatusVacinaAtrasada() {

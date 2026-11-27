@@ -9,12 +9,7 @@ import com.sun.net.httpserver.HttpHandler;
 import java.io.IOException;
 import java.util.List;
 
-/**
- * ============================================================================
- * HANDLER HTTP: PrescricaoPostHandler (POST /api/prescricoes e GET /api/prescricoes)
- * ============================================================================
- * Registra medicamentos ativos com posologia vinculados ao pet no prontuário.
- */
+// Endpoint /api/prescricoes para cadastrar e listar medicamentos ativos do pet
 public class PrescricaoPostHandler implements HttpHandler {
 
     private final ProntuarioService prontuarioService;

@@ -1195,7 +1195,7 @@
           <p class="public-tag-subtitle" id="public-tag-pet-subtitle">Identificação Inteligente PetStory • Ajude este
             animal a voltar para casa!</p>
 
-          <!-- Alerta médico imediato -->
+          <!-- Critical Health Warning Callout (Slide 5: Alerta Médico Imediato) -->
           <div class="public-health-callout">
             <i class="fa-solid fa-triangle-exclamation"></i>
             <div>
@@ -1257,7 +1257,10 @@
               Cadastre novos médicos-veterinários, habilite credenciais com CRMV e audite o acesso clínico ao sistema.
             </p>
           </div>
-          <div>
+          <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+            <button type="button" class="btn-primary" onclick="switchScreen('animais')" style="font-size: 0.85rem; padding: 0.65rem 1.1rem;">
+              <i class="fa-solid fa-paw"></i> Animais Registrados
+            </button>
             <button type="button" class="btn-secondary" onclick="encerrarSessaoAdmin()" style="font-size: 0.85rem; padding: 0.65rem 1.1rem;">
               <i class="fa-solid fa-arrow-right-from-bracket"></i> Encerrar Sessão Admin
             </button>
@@ -1396,6 +1399,82 @@
                 <p style="margin-top: 0.5rem; font-size: 0.85rem;">Carregando veterinários do Supabase...</p>
               </div>
             </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         TELA: ANIMAIS REGISTRADOS (LISTAGEM GERAL • ACESSO ADMINISTRATIVO)
+         ==================================================================== -->
+    <section id="screen-animais" class="screen-view">
+      <div style="max-width: 1100px; margin: 0 auto; padding-bottom: 3rem;">
+
+        <div class="animais-cabecalho">
+          <div>
+            <span class="badge-status" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6; margin-bottom: 0.4rem;">
+              <i class="fa-solid fa-user-shield"></i> Painel do Administrador
+            </span>
+            <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--text-main); margin: 0.3rem 0 0;">
+              Animais Registrados
+            </h1>
+            <p style="font-size: 0.88rem; color: var(--text-secondary); margin-top: 0.35rem;">
+              Todos os pacientes cadastrados no PetStory, com Tag PST, tutor responsável e alertas clínicos.
+            </p>
+          </div>
+          <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+            <button type="button" class="btn-secondary" onclick="switchScreen('admin')" style="font-size: 0.85rem; padding: 0.65rem 1.1rem;">
+              <i class="fa-solid fa-arrow-left"></i> Voltar ao Painel
+            </button>
+            <button type="button" class="btn-secondary" onclick="carregarAnimaisRegistrados()" style="font-size: 0.85rem; padding: 0.65rem 1.1rem;">
+              <i class="fa-solid fa-rotate"></i> Atualizar
+            </button>
+          </div>
+        </div>
+
+        <!-- Resumo numérico -->
+        <div class="animais-resumo">
+          <div class="animais-resumo-item">
+            <i class="fa-solid fa-paw" style="background: var(--teal-tint); color: var(--teal-dark);"></i>
+            <div><strong id="animais-total">0</strong><span>Animais</span></div>
+          </div>
+          <div class="animais-resumo-item">
+            <i class="fa-solid fa-dog" style="background: rgba(37, 99, 235, 0.12); color: #2563eb;"></i>
+            <div><strong id="animais-total-caes">0</strong><span>Cães</span></div>
+          </div>
+          <div class="animais-resumo-item">
+            <i class="fa-solid fa-cat" style="background: rgba(245, 158, 11, 0.12); color: #d97706;"></i>
+            <div><strong id="animais-total-gatos">0</strong><span>Gatos</span></div>
+          </div>
+          <div class="animais-resumo-item">
+            <i class="fa-solid fa-triangle-exclamation" style="background: var(--danger-tint); color: var(--danger);"></i>
+            <div><strong id="animais-total-alertas">0</strong><span>Com alerta clínico</span></div>
+          </div>
+        </div>
+
+        <!-- Busca e filtros -->
+        <div class="animais-filtros card-glass">
+          <div class="input-with-icon" style="flex: 1; min-width: 220px;">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="search" id="animais-busca" class="form-input" oninput="filtrarAnimaisRegistrados()"
+              placeholder="Buscar por nome, raça, Tag PST, microchip, tutor ou cidade...">
+          </div>
+          <select id="animais-filtro-especie" class="form-input" onchange="filtrarAnimaisRegistrados()"
+            style="width: auto; min-width: 170px; padding-left: 1rem;">
+            <option value="todas">Todas as espécies</option>
+            <option value="canina">Caninos (Cães)</option>
+            <option value="felina">Felinos (Gatos)</option>
+            <option value="outra">Outras espécies</option>
+          </select>
+          <span class="animais-contador" id="animais-contador-resultados">0 animais</span>
+        </div>
+
+        <!-- Grade de animais -->
+        <div class="animais-grid" id="animais-grid">
+          <div class="animais-estado-vazio">
+            <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--teal-primary);"></i>
+            <p>Carregando animais registrados no Supabase...</p>
           </div>
         </div>
 
@@ -1880,6 +1959,7 @@
   <script src="js/tutor.js"></script>
   <script src="js/veterinario.js"></script>
   <script src="js/pdf.js"></script>
+  <script src="js/animais.js"></script>
   <script src="js/app.js"></script>
 </body>
 

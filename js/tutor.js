@@ -326,12 +326,7 @@ async function renderTutorPortal(tutor, pet, tagCode) {
       }
     }
   } catch (e) {
-    console.warn('[PetStory] Aviso ao buscar prontuário do tutor no Java backend:', e);
-  }
-
-  // Fallback se backend estiver offline
-  if (listaVacinas.length === 0 && pet?.vacinas && pet.vacinas.length > 0) {
-    listaVacinas = pet.vacinas;
+    console.error('[PetStory] Erro ao buscar prontuário do tutor no backend Java:', e);
   }
 
   // Mantém disponível para o download da Carteirinha em PDF
@@ -889,24 +884,7 @@ function handlePetPhotoUpload(event) {
   reader.readAsDataURL(file);
 }
 
-// ============================================================================
-// GERENCIADOR DE TOKENS OTP DO TUTOR (API JAVA + SUPABASE)
-// ============================================================================
-async function salvarOtpNoSupabase(tag, codigoOtp, petId) {
-  try {
-    const targetPetId = petId || (tag === 'PST-1428' ? '7e096a3b-0468-4347-9bee-a8286a10d416' : (tag === 'PST-9921' ? 'c810977d-2eea-420e-8957-3ab54afba430' : null));
-    if (targetPetId) {
-      await chamarSupabaseRpc('rpc_gerar_otp', {
-        p_pet_id: targetPetId,
-        p_codigo_otp: codigoOtp,
-        p_expira_em: new Date(Date.now() + 7200000).toISOString()
-      });
-    }
-  } catch (e) {
-    console.warn('Erro ao salvar autorização OTP via RPC segura:', e);
-  }
-}
-
+// Gerenciador de tokens OTP do tutor (exclusivo via Backend Java)
 function obterNomePacientePorTag(tag) {
   const cleanTag = (tag || '').trim().toUpperCase();
   if (!cleanTag) return 'Paciente Veterinário';
@@ -946,7 +924,7 @@ async function openOtpModal() {
 
   let code = '';
 
-  // Geração real de OTP no Java HTTP Server (porta 8080)
+  // Geração de OTP exclusiva no Java HTTP Server (porta 8080)
   try {
     const resJava = await fetch(`${BACKEND_URL}/api/otp/gerar`, {
       method: 'POST',
@@ -957,16 +935,22 @@ async function openOtpModal() {
       const dataJava = await resJava.json();
       if (dataJava.codigoOtp) {
         code = dataJava.codigoOtp;
-        showToast('Código Gerado (Java)', `OTP válido por 2 horas gerado com sucesso no servidor.`, 'fa-key', 'success');
+        showToast('Código Gerado!', `OTP válido por 2 horas gerado com sucesso no servidor.`, 'fa-key', 'success');
       }
+    } else {
+      const errData = await resJava.json().catch(() => ({}));
+      showToast('Erro ao Gerar OTP', errData.mensagem || 'Não foi possível gerar o código OTP no servidor.', 'fa-circle-xmark', 'danger');
+      return;
     }
   } catch (errNet) {
-    console.warn('[PetStory] Backend Java offline para gerar OTP. Usando gerador seguro local:', errNet);
+    console.error('[PetStory] Backend Java offline para gerar OTP:', errNet);
+    showToast('Servidor Offline', 'Não foi possível gerar o código OTP. Inicie o servidor Java (localhost:8080) e tente novamente.', 'fa-server', 'danger');
+    return;
   }
 
   if (!code) {
-    code = Math.floor(100000 + Math.random() * 900000).toString();
-    salvarOtpNoSupabase(petTag, code, petId);
+    showToast('Erro ao Gerar OTP', 'O servidor não retornou um código OTP válido.', 'fa-circle-xmark', 'danger');
+    return;
   }
 
   // Limpeza preventiva de chave legada do localStorage
@@ -1091,77 +1075,22 @@ async function carregarTagPublica(tagCode) {
   let pet = null;
   let tutor = null;
 
-  // 1. Consulta direta no Supabase (tags + pets + rpc_obter_tutor_publico)
+  // Consulta exclusiva via Backend Java
   try {
-    const authHeaders = {
-      'apikey': SUPABASE_CONFIG.anonKey,
-      'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
-    };
-
-    const respTag = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/tags?codigo=eq.${encodeURIComponent(cleanTag)}&select=*`, {
-      headers: authHeaders
-    });
-
-    if (respTag.ok) {
-      const tags = await respTag.json();
-      if (tags && tags.length > 0 && tags[0].pet_id) {
-        const respPet = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/pets?id=eq.${tags[0].pet_id}&select=*`, {
-          headers: authHeaders
-        });
-        if (respPet.ok) {
-          const pets = await respPet.json();
-          if (pets && pets.length > 0) {
-            pet = pets[0];
-          }
-        }
+    const respJava = await fetch(`${BACKEND_URL}/api/pets/${encodeURIComponent(cleanTag)}/prontuario`);
+    if (respJava.ok) {
+      const pront = await respJava.json();
+      if (pront && pront.pet) {
+        pet = pront.pet;
+        tutor = pront.tutor;
       }
     }
-
-    if (pet && pet.tutor_id && typeof chamarSupabaseRpc === 'function') {
-      const respTutor = await chamarSupabaseRpc('rpc_obter_tutor_publico', {
-        p_tutor_id: pet.tutor_id
-      });
-      if (respTutor.ok) {
-        const tData = await respTutor.json().catch(() => null);
-        if (tData && tData.nome) {
-          tutor = tData;
-        }
-      }
+  } catch (errJava) {
+    console.error('[PetStory] Backend Java offline para consulta pública da tag:', errJava);
+    if (subEl) {
+      subEl.textContent = `Tag ${cleanTag} • Servidor Java offline (localhost:8080).`;
     }
-  } catch (errSupa) {
-    console.warn('[PetStory] Aviso ao consultar tag pública no Supabase:', errSupa);
-  }
-
-  // 2. Fallback via Backend Java caso Supabase REST falhe ou esteja offline
-  if (!pet || !tutor) {
-    try {
-      const respJava = await fetch(`${BACKEND_URL}/api/pets/${encodeURIComponent(cleanTag)}/prontuario`);
-      if (respJava.ok) {
-        const pront = await respJava.json();
-        if (pront && pront.pet) {
-          pet = pet || pront.pet;
-          tutor = tutor || pront.tutor;
-        }
-      }
-    } catch (errJava) {
-      console.warn('[PetStory] Backend Java offline para consulta pública da tag:', errJava);
-    }
-  }
-
-  // 3. Fallback local seguro se offline
-  if (!pet && session && session.pet && (session.pet.tag || '').toUpperCase() === cleanTag) {
-    pet = session.pet;
-    tutor = tutor || session.tutor;
-  }
-
-  if (!pet) {
-    if (cleanTag === 'PST-9921') {
-      pet = { nome: 'Thor', especie: 'Canina', raca: 'Golden Retriever', alergias_graves: 'Dipirona e Sulfas (Choque anafilático prévio)', foto_url: null };
-      tutor = tutor || { nome: 'Mariana Vasconcelos', telefone_emergencia: '(11) 98765-4321', cidade: 'São Paulo - SP' };
-    } else if (cleanTag === 'PST-1428') {
-      pet = { nome: 'Bolinha', especie: 'Canina', raca: 'SRD', alergias_graves: 'Ração Pedegree, Dipirona', foto_url: null };
-      tutor = tutor || { nome: 'Rafael Martins Oliveira', telefone_emergencia: '(00) 90000-1234', cidade: 'Caruaru - PE' };
-    }
+    showToast('Servidor Offline', 'Não foi possível consultar os dados da tag no servidor Java.', 'fa-server', 'danger');
   }
 
   const petNome = pet?.nome || 'este Pet';

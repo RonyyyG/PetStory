@@ -161,8 +161,8 @@ function verificarPermissaoRota(screenKey) {
     };
   }
 
-  // Rota restrita ao Administrador: #screen-admin (Gestão do Corpo Clínico)
-  if (screenKey === 'admin') {
+  // Rota restrita ao Administrador: #screen-admin e #screen-animais
+  if (screenKey === 'admin' || screenKey === 'animais') {
     const admin = obterSessaoAdmin();
     if (admin && admin.ativo) {
       return { permitida: true };
@@ -353,6 +353,10 @@ function switchScreen(screenKey, routeParams) {
     if (typeof carregarVeterinariosAdmin === 'function') {
       carregarVeterinariosAdmin();
     }
+  } else if (screenKey === 'animais') {
+    if (typeof carregarAnimaisRegistrados === 'function') {
+      carregarAnimaisRegistrados();
+    }
   } else if (screenKey === 'public-tag') {
     let tagCodeUrl = routeParams?.tagCode || null;
     if (!tagCodeUrl && window.location.hash.includes('?')) {
@@ -412,7 +416,7 @@ function updateHeaderContext(screenKey) {
       statusBadge.innerHTML = `<span class="status-dot"></span> Atendimento Clínico`;
     } else if (screenKey === 'tutor') {
       statusBadge.innerHTML = `<span class="status-dot" style="background:#2563eb; box-shadow:0 0 8px #2563eb;"></span> Portal do Tutor`;
-    } else if (screenKey === 'admin') {
+    } else if (screenKey === 'admin' || screenKey === 'animais') {
       statusBadge.innerHTML = `<span class="status-dot" style="background:#8b5cf6; box-shadow:0 0 8px #8b5cf6;"></span> Painel Administrativo`;
     } else {
       statusBadge.innerHTML = `<span class="status-dot" style="background:#d97706; box-shadow:0 0 8px #d97706;"></span> Identificação da Coleira`;
@@ -428,7 +432,7 @@ function updateHeaderContext(screenKey) {
         <span>${nomeTutor}</span>
       `;
       userPill.title = "Tutor Conectado";
-    } else if (screenKey === 'admin') {
+    } else if (screenKey === 'admin' || screenKey === 'animais') {
       userPill.innerHTML = `
         <div style="width: 24px; height: 24px; border-radius: 50%; background: rgba(139, 92, 246, 0.2); color: #8b5cf6; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; margin-right: 6px;">
           <i class="fa-solid fa-user-shield"></i>
@@ -547,7 +551,7 @@ async function handleLoginSubmit(event, role) {
         if (typeof renderTutorPortal === 'function') {
           renderTutorPortal(tutor, pet, tagCode);
         }
-        showToast('Login Autorizado (Java)!', `Bem-vindo(a), ${tutor.nome}! Central de saúde carregada com segurança.`, 'fa-circle-check', 'success');
+        showToast('Login Autorizado!', `Bem-vindo(a), ${tutor.nome}! Central de saúde carregada com segurança.`, 'fa-circle-check', 'success');
         setTimeout(() => { switchScreen('tutor'); }, 500);
         return;
       } else if (respJava.status === 401) {
@@ -557,87 +561,13 @@ async function handleLoginSubmit(event, role) {
       } else if (respJava.status === 404 || (dataJava && dataJava.erro && dataJava.erro.includes('não localizado'))) {
         showToast('Usuário Não Encontrado', dataJava.mensagem || `Nenhum cadastro localizado para ${email}.`, 'fa-triangle-exclamation', 'warning');
         return;
+      } else {
+        showToast('Falha no Login', dataJava.mensagem || 'Não foi possível autenticar no servidor.', 'fa-circle-xmark', 'danger');
+        return;
       }
     } catch (errNet) {
-      console.warn('[PetStory] Servidor Java offline em ' + BACKEND_URL + '. Utilizando contingência local:', errNet);
-      showToast('Aviso: Backend Java', 'Servidor Java em localhost:8080 não detectado. Iniciando fallback de contingência.', 'fa-server', 'warning');
-    }
-
-    try {
-      const senhaHash = await gerarHashSenhaLocal(senhaDigitada);
-      const respTutor = await chamarSupabaseRpc('rpc_autenticar_tutor', {
-        p_email: email,
-        p_senha_hash: senhaHash
-      });
-      const authData = await respTutor.json().catch(() => ({}));
-
-      if (authData && authData.encontrado && !authData.autenticado) {
-        showToast('Senha Incorreta', 'A senha informada não confere com o cadastro deste tutor.', 'fa-circle-xmark', 'danger');
-        passInput?.focus();
-        return;
-      }
-
-      let tutor = (authData && authData.autenticado && authData.tutor) ? authData.tutor : null;
-      let pet = null;
-      let tagCode = null;
-
-      if (tutor) {
-        const respPet = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/pets?tutor_id=eq.${tutor.id}`, {
-          headers: {
-            'apikey': SUPABASE_CONFIG.anonKey,
-            'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
-          }
-        });
-        const pets = await respPet.json();
-        pet = pets && pets.length > 0 ? pets[0] : null;
-
-        if (pet) {
-          const respTag = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/tags?pet_id=eq.${pet.id}`, {
-            headers: {
-              'apikey': SUPABASE_CONFIG.anonKey,
-              'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
-            }
-          });
-          const tags = await respTag.json();
-          tagCode = tags && tags.length > 0 ? tags[0].codigo : 'PST-1428';
-        }
-      } else {
-        const local = obterSessaoSalva();
-        if (local && local.tutor && local.tutor.email && local.tutor.email.toLowerCase() === email) {
-          tutor = local.tutor;
-          pet = local.pet;
-          tagCode = local.pet?.tag || 'PST-1428';
-        }
-      }
-
-      if (tutor && pet) {
-        pet.tag = tagCode;
-        if (!pet.foto_url) {
-          pet.foto_url = DEFAULT_PET_PHOTO;
-        }
-        salvarSessao(tutor, pet, tagCode);
-        if (typeof renderTutorPortal === 'function') {
-          renderTutorPortal(tutor, pet, tagCode);
-        }
-        showToast('Login Efetuado!', `Bem-vindo(a), ${tutor.nome}! Central de saúde de ${pet.nome} carregada.`, 'fa-circle-check', 'success');
-        setTimeout(() => { switchScreen('tutor'); }, 500);
-        return;
-      }
-
-      showToast('Usuário Não Encontrado', `Nenhum cadastro localizado para ${email}.`, 'fa-triangle-exclamation', 'warning');
-
-    } catch (err) {
-      console.error('Erro na autenticação de contingência:', err);
-      const local = obterSessaoSalva();
-      if (local && local.tutor) {
-        if (typeof renderTutorPortal === 'function') {
-          renderTutorPortal(local.tutor, local.pet, local.pet?.tag);
-        }
-        showToast('Conectado', `Autenticado: ${local.tutor.nome}`, 'fa-shield-dog', 'info');
-        switchScreen('tutor');
-      } else {
-        showToast('Erro de Conexão', 'Não foi possível contatar o serviço. Tente novamente.', 'fa-circle-exclamation', 'danger');
-      }
+      console.error('[PetStory] Servidor Java offline em ' + BACKEND_URL + ':', errNet);
+      showToast('Servidor Offline', 'Não foi possível conectar ao servidor Java (localhost:8080). Inicie o backend e tente novamente.', 'fa-server', 'danger');
     }
 
   } else {
@@ -743,83 +673,13 @@ async function handleLoginSubmit(event, role) {
         showToast('Dados Incompletos', dataJava.mensagem || 'Verifique E-mail, CRMV, UF e Senha informados.', 'fa-triangle-exclamation', 'warning');
         crmvInput?.focus();
         return;
+      } else {
+        showToast('Falha no Login', dataJava.mensagem || 'Não foi possível validar as credenciais no servidor.', 'fa-circle-xmark', 'danger');
+        return;
       }
     } catch (errNet) {
-      console.warn('[PetStory] Backend Java offline para login vet. Utilizando contingência Supabase:', errNet);
-      showToast('Aviso: Backend Java', 'Servidor Java offline. Executando contingência via Supabase...', 'fa-server', 'warning');
-    }
-
-    // 2. Fallback de contingência via função RPC segura (não expõe tabela veterinarios ou senha_hash)
-    try {
-      const senhaHash = await gerarHashSenhaLocal(senha);
-      let respRpc = await chamarSupabaseRpc('rpc_autenticar_veterinario', {
-        p_identificador: crmvRaw,
-        p_senha_hash: senhaHash
-      });
-      let authData = await respRpc.json().catch(() => ({}));
-
-      // Caso não localizado pelo CRMV, tenta consultar pelo e-mail para apontar divergência de CRMV
-      if ((!authData || !authData.encontrado) && emailRaw) {
-        const respEmail = await chamarSupabaseRpc('rpc_autenticar_veterinario', {
-          p_identificador: emailRaw,
-          p_senha_hash: senhaHash
-        });
-        const emailData = await respEmail.json().catch(() => ({}));
-        if (emailData && emailData.encontrado) {
-          authData = emailData;
-        }
-      }
-
-      if (!authData || !authData.encontrado) {
-        showToast('CRMV Não Localizado', `Nenhum cadastro de veterinário encontrado para CRMV ${crmvRaw} / ${emailRaw}.`, 'fa-triangle-exclamation', 'warning');
-        crmvInput?.focus();
-        return;
-      }
-
-      if (authData.ativo === false) {
-        showToast('Credencial Inativa', 'A credencial deste médico-veterinário está inativa. Contate o administrador.', 'fa-ban', 'danger');
-        return;
-      }
-
-      if (!authData.autenticado || !authData.veterinario) {
-        showToast('Senha Incorreta', 'Senha do médico-veterinário incorreta.', 'fa-circle-xmark', 'danger');
-        passInput?.focus();
-        return;
-      }
-
-      const vetEncontrado = authData.veterinario;
-
-      // Validação cruzada estrita: E-mail + CRMV + UF
-      const emailBanco = (vetEncontrado.email || '').trim().toLowerCase();
-      if (!emailBanco || emailBanco !== emailRaw) {
-        showToast('E-mail Incompatível', `O e-mail informado (${emailRaw}) não confere com o cadastrado para este profissional.`, 'fa-envelope', 'danger');
-        emailInput?.focus();
-        return;
-      }
-
-      const crmvDigitsBanco = (vetEncontrado.crmv || '').replace(/\D/g, '');
-      if (!crmvDigits || crmvDigits !== crmvDigitsBanco) {
-        showToast('CRMV Incompatível', `O CRMV informado (${crmvRaw}) é incompatível com o registro cadastrado.`, 'fa-id-card', 'danger');
-        crmvInput?.focus();
-        return;
-      }
-
-      if (uf && vetEncontrado.crmv) {
-        const matchUf = vetEncontrado.crmv.match(/CRMV[-\s]*([A-Z]{2})/i);
-        const ufBanco = matchUf ? matchUf[1].toUpperCase() : null;
-        if (ufBanco && ufBanco !== uf) {
-          showToast('UF Incompatível', `A UF selecionada (CRMV-${uf}) não confere com a UF registrada.`, 'fa-location-dot', 'danger');
-          ufInput?.focus();
-          return;
-        }
-      }
-
-      salvarSessaoVet(vetEncontrado);
-      showToast('CRMV Validado!', `${vetEncontrado.nome} (${vetEncontrado.crmv || crmvRaw}) autenticado com sucesso.`, 'fa-stethoscope', 'success');
-      setTimeout(() => { switchScreen('vet-scan'); }, 600);
-    } catch (errFallback) {
-      console.error('Erro na contingência do veterinário:', errFallback);
-      showToast('Erro de Conexão', 'Não foi possível validar as credenciais no momento. Tente novamente.', 'fa-triangle-exclamation', 'danger');
+      console.error('[PetStory] Backend Java offline para login vet:', errNet);
+      showToast('Servidor Offline', 'Não foi possível conectar ao servidor Java (localhost:8080). Inicie o backend e tente novamente.', 'fa-server', 'danger');
     }
   }
 }
@@ -933,8 +793,9 @@ async function carregarVeterinariosAdmin() {
   `;
 
   let vets = [];
+  let erroConexao = false;
 
-  // 1. Tenta carregar do Servidor HTTP Java
+  // Carrega do Servidor HTTP Java
   try {
     const resp = await fetch(`${BACKEND_URL}/api/admin/veterinarios`);
     if (resp.ok) {
@@ -942,26 +803,22 @@ async function carregarVeterinariosAdmin() {
       if (data && data.veterinarios && Array.isArray(data.veterinarios)) {
         vets = data.veterinarios;
       }
+    } else {
+      erroConexao = true;
     }
   } catch (errNet) {
-    console.warn('[Admin] Backend Java offline para listagem de veterinários. Consultando Supabase:', errNet);
+    console.error('[Admin] Backend Java offline para listagem de veterinários:', errNet);
+    erroConexao = true;
   }
 
-  // 2. Fallback direto via função RPC segura
-  if (!vets || vets.length === 0) {
-    try {
-      const resp = await chamarSupabaseRpc('rpc_admin_listar_veterinarios', {
-        p_admin_chave: SUPABASE_CONFIG.adminRpcKey
-      });
-      if (resp.ok) {
-        const resJson = await resp.json();
-        if (Array.isArray(resJson)) {
-          vets = resJson;
-        }
-      }
-    } catch (errSupabase) {
-      console.error('[Admin] Erro ao carregar veterinários via RPC:', errSupabase);
-    }
+  if (erroConexao) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 2rem; color: #b91c1c; background: #fef2f2; border-radius: 8px; border: 1px dashed #fca5a5;">
+        <i class="fa-solid fa-server" style="font-size: 1.6rem; display: block; margin-bottom: 0.4rem;"></i>
+        Servidor Java offline (localhost:8080). Inicie o backend para gerenciar o corpo clínico.
+      </div>
+    `;
+    return;
   }
 
   if (!vets || vets.length === 0) {
@@ -1070,8 +927,9 @@ async function salvarNovoVeterinarioAdmin(e) {
   }
 
   let gravadoComSucesso = false;
+  let mensagemErro = 'Não foi possível cadastrar o veterinário no momento. Verifique se o servidor Java está ativo.';
 
-  // 1. Tenta envio pelo Servidor Java
+  // Envia exclusivamente para o Servidor Java
   try {
     const respJava = await fetch(`${BACKEND_URL}/api/admin/veterinarios`, {
       method: 'POST',
@@ -1090,32 +948,13 @@ async function salvarNovoVeterinarioAdmin(e) {
 
     if (respJava.ok) {
       gravadoComSucesso = true;
+    } else {
+      const errData = await respJava.json().catch(() => ({}));
+      if (errData?.mensagem) mensagemErro = errData.mensagem;
     }
   } catch (errNet) {
-    console.warn('[Admin] Backend Java offline, tentando gravação direta no Supabase:', errNet);
-  }
-
-  // 2. Fallback direto via função RPC segura com cálculo de SHA-256
-  if (!gravadoComSucesso) {
-    try {
-      const senhaHash = await gerarHashSenhaLocal(senha);
-
-      const respSupabase = await chamarSupabaseRpc('rpc_admin_cadastrar_veterinario', {
-        p_admin_chave: SUPABASE_CONFIG.adminRpcKey,
-        p_nome: nome,
-        p_crmv: crmvFormatado,
-        p_clinica: clinica,
-        p_especialidade: especialidade,
-        p_email: email,
-        p_senha_hash: senhaHash
-      });
-
-      if (respSupabase.ok || respSupabase.status === 201) {
-        gravadoComSucesso = true;
-      }
-    } catch (errSupabase) {
-      console.error('[Admin] Erro na contingência RPC Supabase:', errSupabase);
-    }
+    console.error('[Admin] Backend Java offline ao cadastrar veterinário:', errNet);
+    mensagemErro = 'Servidor Java offline (localhost:8080). Inicie o backend e tente novamente.';
   }
 
   if (btnSubmit) {
@@ -1128,7 +967,7 @@ async function salvarNovoVeterinarioAdmin(e) {
     document.getElementById('form-cad-vet-admin')?.reset();
     carregarVeterinariosAdmin();
   } else {
-    showToast('Falha no Cadastro', 'Não foi possível cadastrar o veterinário no momento. Tente novamente.', 'fa-circle-xmark', 'danger');
+    showToast('Falha no Cadastro', mensagemErro, 'fa-circle-xmark', 'danger');
   }
 }
 
@@ -1138,7 +977,7 @@ async function alternarStatusVeterinarioAdmin(id, novoStatus) {
   const acaoTexto = novoStatus ? 'reativar' : 'desativar';
   let sucesso = false;
 
-  // 1. Tenta atualizar via Backend Java (PATCH /api/admin/veterinarios/{id})
+  // Atualiza via Backend Java (PATCH /api/admin/veterinarios/{id})
   try {
     const respJava = await fetch(`${BACKEND_URL}/api/admin/veterinarios/${id}`, {
       method: 'PATCH',
@@ -1149,23 +988,7 @@ async function alternarStatusVeterinarioAdmin(id, novoStatus) {
       sucesso = true;
     }
   } catch (errNet) {
-    console.warn(`[Admin] Backend Java offline ao ${acaoTexto} veterinário. Usando Supabase REST:`, errNet);
-  }
-
-  // 2. Fallback de contingência via RPC segura
-  if (!sucesso) {
-    try {
-      const respSupa = await chamarSupabaseRpc('rpc_admin_atualizar_status_vet', {
-        p_admin_chave: SUPABASE_CONFIG.adminRpcKey,
-        p_id: id,
-        p_ativo: novoStatus
-      });
-      if (respSupa.ok) {
-        sucesso = true;
-      }
-    } catch (errSupa) {
-      console.error(`[Admin] Erro ao ${acaoTexto} veterinário via RPC:`, errSupa);
-    }
+    console.error(`[Admin] Backend Java offline ao ${acaoTexto} veterinário:`, errNet);
   }
 
   if (sucesso) {
@@ -1190,7 +1013,7 @@ async function excluirVeterinarioAdmin(id, nome) {
 
   let sucesso = false;
 
-  // 1. Tenta excluir via Backend Java (DELETE /api/admin/veterinarios/{id})
+  // Exclui via Backend Java (DELETE /api/admin/veterinarios/{id})
   try {
     const respJava = await fetch(`${BACKEND_URL}/api/admin/veterinarios/${id}`, {
       method: 'DELETE',
@@ -1201,22 +1024,7 @@ async function excluirVeterinarioAdmin(id, nome) {
       sucesso = true;
     }
   } catch (errNet) {
-    console.warn('[Admin] Backend Java offline ao excluir veterinário. Usando Supabase REST:', errNet);
-  }
-
-  // 2. Fallback de contingência via RPC segura
-  if (!sucesso) {
-    try {
-      const respSupa = await chamarSupabaseRpc('rpc_admin_excluir_vet', {
-        p_admin_chave: SUPABASE_CONFIG.adminRpcKey,
-        p_id: id
-      });
-      if (respSupa.ok) {
-        sucesso = true;
-      }
-    } catch (errSupa) {
-      console.error('[Admin] Erro ao excluir veterinário via RPC:', errSupa);
-    }
+    console.error('[Admin] Backend Java offline ao excluir veterinário:', errNet);
   }
 
   if (sucesso) {

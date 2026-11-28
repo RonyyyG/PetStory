@@ -67,7 +67,7 @@ async function validarAcessoClinicoVeterinario(tagDigitada, otpDigitado) {
     };
   }
 
-  // 1. Tenta validação estrita no Servidor Backend Java (porta 8080)
+  // Validação exclusiva no Servidor Backend Java (porta 8080)
   try {
     const vetSession = (typeof obterSessaoVet === 'function' ? obterSessaoVet() : null) || (() => {
       try {
@@ -96,92 +96,19 @@ async function validarAcessoClinicoVeterinario(tagDigitada, otpDigitado) {
       return {
         valido: false,
         campo: 'otp',
-        titulo: 'Acesso Recusado (Backend Java)',
+        titulo: 'Acesso Recusado',
         mensagem: dataJava.mensagem || `Código OTP [${otp}] recusado pelo servidor de segurança.`
       };
     }
   } catch (errNet) {
-    console.warn('[PetStory] Backend Java offline em ' + BACKEND_URL + '. Utilizando validação de contingência local:', errNet);
-  }
-
-  // 2. Fallback de contingência validando atomicamente via função RPC segura no Supabase
-  try {
-    let targetPetId = typeof resolverPetIdSupabase === 'function' ? resolverPetIdSupabase(tag) : null;
-    if (!targetPetId) {
-      const respTag = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/tags?codigo=eq.${encodeURIComponent(tag)}&select=pet_id`, {
-        headers: {
-          'apikey': SUPABASE_CONFIG.anonKey,
-          'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
-        }
-      });
-      if (respTag.ok) {
-        const tagRows = await respTag.json();
-        if (tagRows && tagRows.length > 0) targetPetId = tagRows[0].pet_id;
-      }
-    }
-
-    if (targetPetId) {
-      const respRpc = await chamarSupabaseRpc('rpc_validar_otp', {
-        p_pet_id: targetPetId,
-        p_codigo_otp: otp
-      });
-      if (respRpc.ok) {
-        const resRpc = await respRpc.json();
-        if (resRpc && resRpc.valido) {
-          const nomePet = typeof obterNomePacientePorTag === 'function' ? obterNomePacientePorTag(tag) : 'Paciente';
-          return {
-            valido: true,
-            tag: tag,
-            nome: nomePet
-          };
-        } else if (resRpc && resRpc.motivo === 'ja_utilizado') {
-          return {
-            valido: false,
-            campo: 'otp',
-            titulo: 'Código Já Utilizado',
-            mensagem: `Este código OTP (${otp}) já foi utilizado anteriormente (uso único).`
-          };
-        } else if (resRpc && resRpc.motivo === 'expirado') {
-          return {
-            valido: false,
-            campo: 'otp',
-            titulo: 'Código Expirado',
-            mensagem: 'O código de autorização expirou após 2 horas. Solicite um novo ao tutor.'
-          };
-        }
-      }
-    }
-  } catch (errOtp) {
-    console.warn('[PetStory] Aviso ao validar OTP via RPC segura:', errOtp);
-  }
-
-  // 3. Fallback de contingência local em memória
-  if (typeof validarTagCadastrada === 'function' && !validarTagCadastrada(tag)) {
-    return {
-      valido: false,
-      campo: 'tag',
-      titulo: 'Tag Não Encontrada',
-      mensagem: `A medalha [${tag}] não foi localizada no cadastro. Verifique o código alfanumérico.`
-    };
-  }
-
-  const otpEsperado = typeof obterOtpEsperadoParaTag === 'function' ? obterOtpEsperadoParaTag(tag) : null;
-  const nomePet = typeof obterNomePacientePorTag === 'function' ? obterNomePacientePorTag(tag) : 'Paciente';
-
-  if (!otpEsperado || otp !== otpEsperado) {
+    console.error('[PetStory] Backend Java offline em ' + BACKEND_URL + ':', errNet);
     return {
       valido: false,
       campo: 'otp',
-      titulo: 'Código OTP Incorreto',
-      mensagem: `Código OTP [${otp}] incorreto! Não coincide com a autorização gerada pelo tutor de ${nomePet}. Acesso ao prontuário negado.`
+      titulo: 'Servidor Offline',
+      mensagem: 'Não foi possível conectar ao servidor Java (localhost:8080) para validar o OTP. Inicie o backend e tente novamente.'
     };
   }
-
-  return {
-    valido: true,
-    tag: tag,
-    nome: nomePet
-  };
 }
 
 function initScannerSimulations() {
@@ -647,75 +574,13 @@ function carregarProntuarioPaciente(tagCode) {
         carregarExamesProntuario(pet.id || codigoAlvo);
         carregarVermifugosProntuario(pet.id || codigoAlvo);
       } else {
-        aplicarSessaoLocal();
+        showToast('Prontuário Indisponível', 'Não foi possível localizar o prontuário deste paciente no servidor.', 'fa-triangle-exclamation', 'warning');
       }
     })
     .catch(err => {
-      console.warn('[PetStory] Aviso ao buscar prontuário do pet no Java backend:', err);
-      aplicarSessaoLocal();
+      console.error('[PetStory] Erro ao buscar prontuário do pet no Java backend:', err);
+      showToast('Servidor Offline', 'Não foi possível carregar o prontuário. Inicie o servidor Java (localhost:8080).', 'fa-server', 'danger');
     });
-
-  function aplicarSessaoLocal() {
-    if (session && session.pet) {
-      const pet = session.pet;
-      const tutor = session.tutor || {};
-
-      pacienteAtualProntuario = pet;
-      pacienteAtualProntuario.tutor_nome = tutor.nome;
-      pacienteAtualProntuario.tutor_telefone = tutor.telefone_emergencia;
-      pacienteAtualProntuario.tutor_cidade = tutor.cidade;
-      window.pacienteAtualProntuario = pacienteAtualProntuario;
-
-      if (pNome) pNome.textContent = pet.nome;
-      if (pRaca) pRaca.textContent = pet.raca || 'SRD';
-      if (pSexo) pSexo.innerHTML = `${pet.sexo || 'Macho'} • <strong>${pet.castrado !== false ? 'Castrado' : 'Não Castrado'}</strong>`;
-      if (pIdade) pIdade.innerHTML = `Idade: <strong>Aprox. 2 anos</strong>`;
-      if (pPeso) pPeso.textContent = `${pet.peso ? parseFloat(pet.peso).toFixed(1) : '12.5'} kg`;
-      if (pTag) pTag.textContent = pet.tag || codigoAlvo;
-      if (pMicrochip) pMicrochip.textContent = pet.microchip || 'Pendente de Implante';
-      if (tNome) tNome.textContent = tutor.nome || 'Tutor Responsável';
-      if (tTel) tTel.textContent = tutor.telefone_emergencia || '--';
-      if (tCidade) tCidade.textContent = tutor.cidade || '--';
-
-      if (photoImg) {
-        photoImg.src = pet.foto_url || DEFAULT_PET_NEUTRAL_AVATAR;
-      }
-
-      if (alertAlergia) {
-        if (pet.alergias_graves && !pet.alergias_graves.toLowerCase().includes('nenhuma')) {
-          alertAlergia.style.display = 'inline-flex';
-          alertAlergia.innerHTML = `<i class="fa-solid fa-ban"></i> ALERGIAS: ${pet.alergias_graves}`;
-        } else {
-          alertAlergia.style.display = 'none';
-        }
-      }
-
-      if (alertAnestesica) {
-        if (pet.restricoes_anestesicas && !pet.restricoes_anestesicas.toLowerCase().includes('nenhuma')) {
-          alertAnestesica.style.display = 'inline-flex';
-          alertAnestesica.innerHTML = `<i class="fa-solid fa-syringe"></i> RESTRIÇÃO ANESTÉSICA: ${pet.restricoes_anestesicas}`;
-        } else {
-          alertAnestesica.style.display = 'none';
-        }
-      }
-
-      if (alertCronica) {
-        if (pet.condicoes_cronicas && !pet.condicoes_cronicas.toLowerCase().includes('nenhuma')) {
-          alertCronica.style.display = 'inline-flex';
-          alertCronica.innerHTML = `<i class="fa-solid fa-notes-medical"></i> CONDIÇÃO: ${pet.condicoes_cronicas}`;
-        } else {
-          alertCronica.style.display = 'none';
-        }
-      }
-
-      carregarVacinasProntuario(pet.id || codigoAlvo);
-      carregarCirurgiasProntuario(pet.id || codigoAlvo);
-      carregarPrescricoesProntuario(pet.id || codigoAlvo);
-      carregarTimelineProntuario(pet.id || codigoAlvo);
-      carregarExamesProntuario(pet.id || codigoAlvo);
-      carregarVermifugosProntuario(pet.id || codigoAlvo);
-    }
-  }
 }
 
 async function carregarVacinasProntuario(petId) {
@@ -773,7 +638,7 @@ async function carregarCirurgiasProntuario(petId) {
 
   const targetId = resolverPetIdSupabase(petId);
 
-  // 1. Tenta carregar do backend Java
+  // Carrega exclusivamente do backend Java
   try {
     const resp = await fetch(`${BACKEND_URL}/api/pets/${petId || targetId}/prontuario`);
     if (resp.ok) {
@@ -784,26 +649,7 @@ async function carregarCirurgiasProntuario(petId) {
       }
     }
   } catch (errNet) {
-    console.warn('[PetStory] Aviso ao carregar cirurgias do Java:', errNet);
-  }
-
-  // 2. Consulta no Supabase
-  try {
-    const respSupa = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/cirurgias?pet_id=eq.${targetId}&order=data.asc,created_at.desc`, {
-      headers: {
-        'apikey': SUPABASE_CONFIG.anonKey,
-        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
-      }
-    });
-    if (respSupa.ok) {
-      const cirurgias = await respSupa.json();
-      if (cirurgias && cirurgias.length > 0) {
-        renderizarCirurgias(cirurgias);
-        return;
-      }
-    }
-  } catch (errSupa) {
-    console.warn('[PetStory] Aviso ao carregar cirurgias do Supabase:', errSupa);
+    console.error('[PetStory] Erro ao carregar cirurgias do Java:', errNet);
   }
 
   tbody.innerHTML = `
@@ -843,7 +689,7 @@ async function carregarPrescricoesProntuario(petId) {
 
   const targetId = resolverPetIdSupabase(petId);
 
-  // 1. Tenta carregar do Java
+  // Carrega exclusivamente do backend Java
   try {
     const resp = await fetch(`${BACKEND_URL}/api/pets/${petId || targetId}/prontuario`);
     if (resp.ok) {
@@ -854,26 +700,7 @@ async function carregarPrescricoesProntuario(petId) {
       }
     }
   } catch (errNet) {
-    console.warn('[PetStory] Aviso ao carregar prescrições do Java:', errNet);
-  }
-
-  // 2. Consulta no Supabase
-  try {
-    const respSupa = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/prescricoes?pet_id=eq.${targetId}&ativa=eq.true&order=created_at.desc`, {
-      headers: {
-        'apikey': SUPABASE_CONFIG.anonKey,
-        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`
-      }
-    });
-    if (respSupa.ok) {
-      const prescricoes = await respSupa.json();
-      if (prescricoes && prescricoes.length > 0) {
-        renderizarPrescricoes(prescricoes);
-        return;
-      }
-    }
-  } catch (errSupa) {
-    console.warn('[PetStory] Aviso ao carregar prescrições do Supabase:', errSupa);
+    console.error('[PetStory] Erro ao carregar prescrições do Java:', errNet);
   }
 
   grid.innerHTML = `
@@ -1234,7 +1061,56 @@ async function salvarModalVacina(event) {
   const vetCrmv = vetSession?.crmv_completo || (vetSession?.crmv ? `CRMV-${vetSession.uf || 'SP'} ${vetSession.crmv}` : 'CRMV Ativo');
   const vetAssinatura = `${vetNome} (${vetCrmv})`;
 
-  // 1. Adiciona na tabela do Prontuário do Veterinário
+  // 1. Salva no backend Java antes de atualizar a tela
+  const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
+  let petId = pacienteAtualProntuario?.id || session?.pet?.id;
+  let tagCode = pacienteAtualProntuario?.tag || session?.pet?.tag;
+  if (!petId && tagCode === 'PST-9921') {
+    petId = 'c810977d-2eea-420e-8957-3ab54afba430';
+  } else if (!petId && (tagCode === 'PST-1428' || pacienteAtualProntuario?.nome === 'Bolinha')) {
+    petId = '7e096a3b-0468-4347-9bee-a8286a10d416';
+  }
+
+  const vaxPayload = {
+    petId: petId || tagCode || 'PST-1428',
+    nome: nome,
+    nome_vacina: nome,
+    lote: lote,
+    laboratorio_lote: lote,
+    data_aplicacao: dataApl,
+    data_reforco: dataRef,
+    veterinario_crmv: vetAssinatura,
+    status: 'Em Dia'
+  };
+
+  try {
+    const respJava = await fetch(`${BACKEND_URL}/api/vacinas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(vaxPayload)
+    });
+    if (!respJava.ok) {
+      const errData = await respJava.json().catch(() => ({}));
+      showToast('Erro ao Salvar Vacina', errData.mensagem || 'O servidor Java recusou o registro da vacina.', 'fa-circle-xmark', 'danger');
+      return;
+    }
+  } catch (e) {
+    console.error('[PetStory] Backend Java offline ao enviar vacina:', e);
+    showToast('Servidor Offline', 'Não foi possível salvar a vacina porque o servidor Java (localhost:8080) está desligado.', 'fa-server', 'danger');
+    return;
+  }
+
+  if (!window.vacinasTutorConsolidadas) window.vacinasTutorConsolidadas = [];
+  window.vacinasTutorConsolidadas.unshift({
+    nome: nome,
+    lote: `${lote} • ${vetAssinatura}`,
+    aplicacao: dataAplBr,
+    reforco: dataRefBr,
+    crmv: vetAssinatura,
+    status: 'Em Dia'
+  });
+
+  // 2. Adiciona na tabela do Prontuário do Veterinário
   const tbody = document.getElementById('prontuario-vax-tbody');
   if (tbody) {
     if (tbody.textContent.includes('Nenhuma vacina')) {
@@ -1253,7 +1129,7 @@ async function salvarModalVacina(event) {
     tbody.prepend(tr);
   }
 
-  // 2. Adiciona na Carteirinha do Tutor
+  // 3. Adiciona na Carteirinha do Tutor
   const tutorVaxList = document.getElementById('tutor-vax-list');
   if (tutorVaxList) {
     const empty = tutorVaxList.querySelector('.vax-empty-state');
@@ -1279,7 +1155,7 @@ async function salvarModalVacina(event) {
     tutorVaxList.prepend(div);
   }
 
-  // 3. Adiciona aos lembretes do tutor
+  // 4. Adiciona aos lembretes do tutor
   const tutorReminders = document.getElementById('tutor-reminders-container');
   if (tutorReminders) {
     if (tutorReminders.textContent.includes('Nenhum procedimento')) {
@@ -1293,51 +1169,6 @@ async function salvarModalVacina(event) {
       <div style="font-size: 0.78rem; color: #15803d;">Data prevista: ${dataRefBr} • ${vetNome}</div>
     `;
     tutorReminders.prepend(alertBox);
-  }
-
-  // 4. Salva no backend Java
-  const session = typeof obterSessaoSalva === 'function' ? obterSessaoSalva() : null;
-  let petId = pacienteAtualProntuario?.id || session?.pet?.id;
-  let tagCode = pacienteAtualProntuario?.tag || session?.pet?.tag;
-  if (!petId && tagCode === 'PST-9921') {
-    petId = 'c810977d-2eea-420e-8957-3ab54afba430';
-  } else if (!petId && (tagCode === 'PST-1428' || pacienteAtualProntuario?.nome === 'Bolinha')) {
-    petId = '7e096a3b-0468-4347-9bee-a8286a10d416';
-  }
-
-  const vaxPayload = {
-    petId: petId || tagCode || 'PST-1428',
-    nome: nome,
-    nome_vacina: nome,
-    lote: lote,
-    laboratorio_lote: lote,
-    data_aplicacao: dataApl,
-    data_reforco: dataRef,
-    veterinario_crmv: vetAssinatura,
-    status: 'Em Dia'
-  };
-
-  if (!window.vacinasTutorConsolidadas) window.vacinasTutorConsolidadas = [];
-  window.vacinasTutorConsolidadas.unshift({
-    nome: nome,
-    lote: `${lote} • ${vetAssinatura}`,
-    aplicacao: dataAplBr,
-    reforco: dataRefBr,
-    crmv: vetAssinatura,
-    status: 'Em Dia'
-  });
-
-  try {
-    const respJava = await fetch(`${BACKEND_URL}/api/vacinas`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(vaxPayload)
-    });
-    if (respJava.ok) {
-      console.log('[PetStory] Vacina registrada no Java com sucesso.');
-    }
-  } catch (e) {
-    console.warn('[PetStory] Aviso ao enviar vacina para o backend Java:', e);
   }
 
   fecharModalNovaVacina();

@@ -7,8 +7,7 @@ const BACKEND_URL = 'http://localhost:8080';
 
 const SUPABASE_CONFIG = {
   url: 'https://tiqzidcqqscarcdgbcgr.supabase.co',
-  anonKey: 'sb_publishable_92MgWBkRVu6i3vmS2xTWdw_io6Gk-wj',
-  adminRpcKey: 'PetStoryAdmin#2026'
+  anonKey: 'sb_publishable_92MgWBkRVu6i3vmS2xTWdw_io6Gk-wj'
 };
 
 const SCREENS = {
